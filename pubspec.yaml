@@ -1,0 +1,57 @@
+name: orchidlife
+description: "OrchidLife - Smart orchid care reminders with lux meter and AI help"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # Database - Drift (SQLite-based, actively maintained)
+  drift: ^2.18.0
+  sqlite3_flutter_libs: ^0.5.0
+  path_provider: ^2.1.0
+  path: ^1.9.0
+
+  # State management
+  provider: ^6.1.0
+
+  # Notifications & Alarms
+  flutter_local_notifications: ^17.0.0
+  timezone: ^0.9.0
+  permission_handler: ^11.3.1
+
+  # Storage
+  shared_preferences: ^2.2.0
+
+  # Utilities
+  intl: ^0.19.0
+
+  # Images
+  image_picker: ^1.0.0
+
+  # Lux Meter - ambient light sensor (Android)
+  light_sensor: ^3.0.2
+
+  # AI Handoff (Photo + Voice)
+  url_launcher: ^6.2.0
+  share_plus: ^7.0.0
+  android_intent_plus: ^5.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^4.0.0
+
+  # Drift code generation
+  drift_dev: ^2.18.0
+  build_runner: ^2.4.0
+
+flutter:
+  uses-material-design: true
