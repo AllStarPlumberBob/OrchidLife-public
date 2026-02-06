@@ -150,9 +150,9 @@ class AppTheme {
       // Color Scheme
       colorScheme: ColorScheme.light(
         primary: primary,
-        primaryContainer: primaryLight.withOpacity(0.2),
+        primaryContainer: primaryLight.withValues(alpha: 0.2),
         secondary: secondary,
-        secondaryContainer: secondary.withOpacity(0.2),
+        secondaryContainer: secondary.withValues(alpha: 0.2),
         surface: surface,
         error: statusOverdue,
         onPrimary: textOnPrimary,
@@ -330,7 +330,7 @@ class AppTheme {
       // Navigation Bar (Material 3)
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: surface,
-        indicatorColor: primaryLight.withOpacity(0.3),
+        indicatorColor: primaryLight.withValues(alpha: 0.3),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return const TextStyle(
@@ -357,7 +357,7 @@ class AppTheme {
       // Chip
       chipTheme: ChipThemeData(
         backgroundColor: surfaceVariant,
-        selectedColor: primaryLight.withOpacity(0.3),
+        selectedColor: primaryLight.withValues(alpha: 0.3),
         labelStyle: const TextStyle(
           fontSize: 14,
           color: textPrimary,
@@ -378,7 +378,8 @@ class AppTheme {
   
   static ThemeData get darkTheme {
     return ThemeData.dark(useMaterial3: true).copyWith(
-      colorScheme: ColorScheme.dark(
+      // ignore: prefer_const_constructors - ColorScheme.dark is a factory, not const
+      colorScheme: const ColorScheme.dark().copyWith(
         primary: primaryLight,
         secondary: secondary,
         error: statusOverdue,

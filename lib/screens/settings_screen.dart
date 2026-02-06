@@ -69,13 +69,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ? null  // Disable during async operation
                 : (value) async {
                     setState(() => _isTogglingNotifications = true);
+                    final notif = Provider.of<NotificationService>(context, listen: false);
+                    final messenger = ScaffoldMessenger.of(context);
                     try {
-                      final notif = Provider.of<NotificationService>(context, listen: false);
                       if (value) {
                         final granted = await notif.requestPermissions();
                         if (!granted) {
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            messenger.showSnackBar(
                               const SnackBar(content: Text('Notification permission denied')),
                             );
                           }
@@ -93,7 +94,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       if (mounted) setState(() => _isTogglingNotifications = false);
                     }
                   },
-            activeColor: AppTheme.primaryGreen,
+            activeTrackColor: AppTheme.primaryGreen,
           ),
           ListTile(
             title: const Text('Default Notification Time'),
@@ -113,7 +114,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppTheme.waterBlue.withOpacity(0.15),
+                color: AppTheme.waterBlue.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.water_drop, color: AppTheme.waterBlue),
@@ -128,7 +129,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppTheme.fertilizerOrange.withOpacity(0.15),
+                color: AppTheme.fertilizerOrange.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.eco, color: AppTheme.fertilizerOrange),
@@ -147,7 +148,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.15),
+                color: Colors.orange.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.cleaning_services, color: Colors.orange),
@@ -161,7 +162,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.15),
+                color: Colors.blue.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.download, color: Colors.blue),
@@ -179,7 +180,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppTheme.primaryGreen.withOpacity(0.15),
+                color: AppTheme.primaryGreen.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.local_florist, color: AppTheme.primaryGreen),
@@ -220,14 +221,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _selectNotifyTime() async {
+    final notif = Provider.of<NotificationService>(context, listen: false);
+
     final picked = await showTimePicker(
       context: context,
       initialTime: _defaultNotifyTime,
     );
-    if (picked != null) {
+    if (picked != null && mounted) {
       setState(() => _defaultNotifyTime = picked);
       await _saveSettings();
-      final notif = Provider.of<NotificationService>(context, listen: false);
       await notif.rescheduleAllTasks();
     }
   }
@@ -286,6 +288,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _clearDemoData(BuildContext context, AppDatabase db) async {
+    final messenger = ScaffoldMessenger.of(context);
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -308,7 +312,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (confirm == true) {
       await db.clearDemoData();
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           const SnackBar(content: Text('Demo data cleared')),
         );
       }

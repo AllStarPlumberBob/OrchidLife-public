@@ -84,7 +84,7 @@ class ToolsScreen extends StatelessWidget {
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
+                  color: color.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 28),
@@ -296,7 +296,7 @@ class _LuxMeterScreenState extends State<LuxMeterScreen> {
                     height: 200,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _getLightColor(_currentLux).withOpacity(0.1),
+                      color: _getLightColor(_currentLux).withValues(alpha: 0.1),
                       border: Border.all(
                         color: _getLightColor(_currentLux),
                         width: 4,
@@ -428,8 +428,10 @@ class _LuxMeterScreenState extends State<LuxMeterScreen> {
   }
 
   Future<void> _saveReading(BuildContext context, AppDatabase db) async {
+    if (!context.mounted) return;
     final orchids = await db.getAllOrchids();
 
+    if (!context.mounted) return;
     // Show dialog and get result (returns null if cancelled)
     final result = await showDialog<({int? orchidId, String? location})>(
       context: context,
@@ -581,7 +583,7 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
           children: [
             // Instructions
             Card(
-              color: AppTheme.primaryGreen.withOpacity(0.1),
+              color: AppTheme.primaryGreen.withValues(alpha: 0.1),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
@@ -802,7 +804,7 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
         if (_selectedProblem != null) ...[
           const SizedBox(height: 12),
           Card(
-            color: AppTheme.primaryGreen.withOpacity(0.1),
+            color: AppTheme.primaryGreen.withValues(alpha: 0.1),
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
@@ -1054,7 +1056,7 @@ class CareGuideScreen extends StatelessWidget {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
+                    color: color.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(icon, color: color),

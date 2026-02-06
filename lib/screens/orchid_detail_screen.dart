@@ -78,7 +78,7 @@ class OrchidDetailScreen extends StatelessWidget {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryGreen.withOpacity(0.1),
+                    color: AppTheme.primaryGreen.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
@@ -198,7 +198,7 @@ class OrchidDetailScreen extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: color.withOpacity(task.enabled ? 0.2 : 0.1),
+          color: color.withValues(alpha: task.enabled ? 0.2 : 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(
@@ -232,15 +232,15 @@ class OrchidDetailScreen extends StatelessWidget {
       trailing: Switch(
         value: task.enabled,
         onChanged: (enabled) async {
-          await db.updateCareTask(task.copyWith(enabled: enabled));
           final notif = Provider.of<NotificationService>(context, listen: false);
+          await db.updateCareTask(task.copyWith(enabled: enabled));
           if (enabled) {
             await notif.scheduleTaskNotification(task.copyWith(enabled: true));
           } else {
             await notif.cancelTaskNotification(task.id);
           }
         },
-        activeColor: AppTheme.primaryGreen,
+        activeTrackColor: AppTheme.primaryGreen,
       ),
     );
   }
@@ -353,6 +353,8 @@ class OrchidDetailScreen extends StatelessWidget {
   }
 
   Future<void> _addCareTask(BuildContext context, AppDatabase db) async {
+    final notif = Provider.of<NotificationService>(context, listen: false);
+
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => _AddCareTaskDialog(),
@@ -368,7 +370,6 @@ class OrchidDetailScreen extends StatelessWidget {
         customLabel: Value(result['customLabel'] as String?),
       ));
 
-      final notif = Provider.of<NotificationService>(context, listen: false);
       final newTask = await db.getCareTaskById(taskId);
       if (newTask != null) await notif.scheduleTaskNotification(newTask);
     }
@@ -393,7 +394,7 @@ class _AddCareTaskDialogState extends State<_AddCareTaskDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           DropdownButtonFormField<CareType>(
-            value: _selectedType,
+            initialValue: _selectedType,
             decoration: const InputDecoration(labelText: 'Care Type'),
             items: CareType.values.map((type) {
               return DropdownMenuItem(

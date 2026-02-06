@@ -120,7 +120,7 @@ class _TodayScreenState extends State<TodayScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryGreen.withOpacity(0.1),
+                      color: AppTheme.primaryGreen.withValues(alpha: 0.1),
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(12),
                       ),
@@ -167,7 +167,7 @@ class _TodayScreenState extends State<TodayScreen> {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: color.withOpacity(0.2),
+          color: color.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, color: color),
@@ -224,6 +224,7 @@ class _TodayScreenState extends State<TodayScreen> {
 
   Future<void> _completeTask(BuildContext context, AppDatabase db, CareTask task, String orchidName) async {
     final careTypeName = AppTheme.getCareTypeDisplayName(task.careType.name);
+    final notif = Provider.of<NotificationService>(context, listen: false);
 
     // Show quick completion dialog
     final notes = await showDialog<String>(
@@ -262,7 +263,6 @@ class _TodayScreenState extends State<TodayScreen> {
     if (notes != null) {
       await db.completeTask(task, notes: notes.isEmpty ? null : notes);
 
-      final notif = Provider.of<NotificationService>(context, listen: false);
       await notif.cancelTaskNotification(task.id);
       final updated = await db.getCareTaskById(task.id);
       if (updated != null) await notif.scheduleTaskNotification(updated);
@@ -279,9 +279,10 @@ class _TodayScreenState extends State<TodayScreen> {
   }
 
   Future<void> _snoozeTask(BuildContext context, AppDatabase db, CareTask task) async {
+    final notif = Provider.of<NotificationService>(context, listen: false);
+
     await db.snoozeTask(task, 1);
 
-    final notif = Provider.of<NotificationService>(context, listen: false);
     await notif.cancelTaskNotification(task.id);
     final updated = await db.getCareTaskById(task.id);
     if (updated != null) await notif.scheduleTaskNotification(updated);

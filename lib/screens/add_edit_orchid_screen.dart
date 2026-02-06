@@ -164,7 +164,7 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
                 subtitle: const Text('Water (7 days), Fertilize (30 days)'),
                 value: _addDefaultTasks,
                 onChanged: (value) => setState(() => _addDefaultTasks = value),
-                activeColor: AppTheme.primaryGreen,
+                activeTrackColor: AppTheme.primaryGreen,
               ),
               const SizedBox(height: 16),
             ],
