@@ -66,7 +66,9 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
                 labelText: 'Name *',
                 hintText: 'Give your orchid a name',
                 prefixIcon: Icon(Icons.local_florist),
+                counterText: '', // Hide character counter
               ),
+              maxLength: 100,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'Please enter a name';
@@ -226,7 +228,7 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
       ));
 
       // Add default care tasks if requested
-      if (_addDefaultTasks) {
+      if (_addDefaultTasks && mounted) {
         final now = DateTime.now();
         final notif = Provider.of<NotificationService>(context, listen: false);
 
@@ -238,7 +240,9 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
           nextDue: now.add(const Duration(days: 7)),
         ));
         final waterTask = await db.getCareTaskById(waterId);
-        if (waterTask != null) await notif.scheduleTaskNotification(waterTask);
+        if (waterTask != null && mounted) {
+          await notif.scheduleTaskNotification(waterTask);
+        }
 
         // Fertilize every 30 days
         final fertId = await db.insertCareTask(CareTasksCompanion.insert(
@@ -248,7 +252,9 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
           nextDue: now.add(const Duration(days: 30)),
         ));
         final fertTask = await db.getCareTaskById(fertId);
-        if (fertTask != null) await notif.scheduleTaskNotification(fertTask);
+        if (fertTask != null && mounted) {
+          await notif.scheduleTaskNotification(fertTask);
+        }
       }
 
       if (mounted) {

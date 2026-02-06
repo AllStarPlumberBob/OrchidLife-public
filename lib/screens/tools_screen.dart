@@ -174,7 +174,9 @@ class _LuxMeterScreenState extends State<LuxMeterScreen> {
 
     _luxSubscription = service.luxStream().listen(
       (double lux) {
-        if (mounted) setState(() => _currentLux = lux);
+        // Validate lux value: must be non-negative and finite
+        final sanitizedLux = (lux.isFinite && lux >= 0) ? lux : 0.0;
+        if (mounted) setState(() => _currentLux = sanitizedLux);
       },
       onError: (error) {
         if (mounted) {
@@ -853,9 +855,24 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
     );
 
     if (source != null) {
-      final image = await picker.pickImage(source: source);
-      if (image != null && mounted) {
-        setState(() => _selectedImage = image);
+      try {
+        final image = await picker.pickImage(source: source);
+        if (image != null && mounted) {
+          setState(() => _selectedImage = image);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                source == ImageSource.camera
+                    ? 'Could not access camera. Please check permissions.'
+                    : 'Could not access photos. Please check permissions.',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }

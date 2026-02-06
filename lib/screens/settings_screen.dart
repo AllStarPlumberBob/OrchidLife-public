@@ -14,6 +14,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
+  bool _isTogglingNotifications = false; // Prevent race condition
   TimeOfDay _defaultNotifyTime = const TimeOfDay(hour: 9, minute: 0);
   int _defaultWaterInterval = 7;
   int _defaultFertilizeInterval = 30;
@@ -60,29 +61,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildSectionHeader('Notifications'),
           SwitchListTile(
             title: const Text('Enable Notifications'),
-            subtitle: const Text('Get reminders for care tasks'),
+            subtitle: Text(_isTogglingNotifications
+                ? 'Updating...'
+                : 'Get reminders for care tasks'),
             value: _notificationsEnabled,
-            onChanged: (value) async {
-              final notif = Provider.of<NotificationService>(context, listen: false);
-              if (value) {
-                final granted = await notif.requestPermissions();
-                if (!granted) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Notification permission denied')),
-                    );
-                  }
-                  return;
-                }
-                setState(() => _notificationsEnabled = true);
-                await _saveSettings();
-                await notif.rescheduleAllTasks();
-              } else {
-                setState(() => _notificationsEnabled = false);
-                await _saveSettings();
-                await notif.cancelAllNotifications();
-              }
-            },
+            onChanged: _isTogglingNotifications
+                ? null  // Disable during async operation
+                : (value) async {
+                    setState(() => _isTogglingNotifications = true);
+                    try {
+                      final notif = Provider.of<NotificationService>(context, listen: false);
+                      if (value) {
+                        final granted = await notif.requestPermissions();
+                        if (!granted) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Notification permission denied')),
+                            );
+                          }
+                          return;
+                        }
+                        if (mounted) setState(() => _notificationsEnabled = true);
+                        await _saveSettings();
+                        await notif.rescheduleAllTasks();
+                      } else {
+                        if (mounted) setState(() => _notificationsEnabled = false);
+                        await _saveSettings();
+                        await notif.cancelAllNotifications();
+                      }
+                    } finally {
+                      if (mounted) setState(() => _isTogglingNotifications = false);
+                    }
+                  },
             activeColor: AppTheme.primaryGreen,
           ),
           ListTile(

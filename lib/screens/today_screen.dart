@@ -5,8 +5,19 @@ import '../database/database.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 
-class TodayScreen extends StatelessWidget {
+class TodayScreen extends StatefulWidget {
   const TodayScreen({super.key});
+
+  @override
+  State<TodayScreen> createState() => _TodayScreenState();
+}
+
+class _TodayScreenState extends State<TodayScreen> {
+  Key _refreshKey = UniqueKey();
+
+  void _refresh() {
+    setState(() => _refreshKey = UniqueKey());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,14 +29,12 @@ class TodayScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () {
-              // Force rebuild
-              (context as Element).markNeedsBuild();
-            },
+            onPressed: _refresh,
           ),
         ],
       ),
       body: StreamBuilder<List<CareTask>>(
+        key: _refreshKey,
         stream: db.watchTasksDueToday(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
