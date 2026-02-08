@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import '../database/database.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/orchid_sliver_app_bar.dart';
+import '../widgets/empty_state.dart';
 
 class TodayScreen extends StatefulWidget {
   const TodayScreen({super.key});
@@ -24,135 +26,114 @@ class _TodayScreenState extends State<TodayScreen> {
     final db = Provider.of<AppDatabase>(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Today'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refresh,
-          ),
-        ],
-      ),
       body: StreamBuilder<List<CareTask>>(
         key: _refreshKey,
         stream: db.watchTasksDueToday(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return Center(
-              child: Text('Error: ${snapshot.error}'),
-            );
-          }
-
-          final tasks = snapshot.data ?? [];
-
-          if (tasks.isEmpty) {
-            return _buildEmptyState();
-          }
-
-          return _buildTaskList(context, db, tasks);
+          return CustomScrollView(
+            slivers: [
+              OrchidSliverAppBar(
+                title: 'Today',
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    onPressed: _refresh,
+                  ),
+                ],
+              ),
+              if (snapshot.connectionState == ConnectionState.waiting)
+                const SliverFillRemaining(
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (snapshot.hasError)
+                SliverFillRemaining(
+                  child: Center(child: Text('Error: ${snapshot.error}')),
+                )
+              else if ((snapshot.data ?? []).isEmpty)
+                const SliverFillRemaining(
+                  child: EmptyState(
+                    icon: Icons.check_circle_outline,
+                    title: 'All caught up!',
+                    subtitle: 'No care tasks due today',
+                  ),
+                )
+              else
+                ..._buildTaskSlivers(context, db, snapshot.data!),
+            ],
+          );
         },
       ),
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.check_circle_outline,
-            size: 80,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'All caught up!',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[600],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'No care tasks due today',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[500],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTaskList(BuildContext context, AppDatabase db, List<CareTask> tasks) {
+  List<Widget> _buildTaskSlivers(BuildContext context, AppDatabase db, List<CareTask> tasks) {
     // Group tasks by orchid
     final Map<int, List<CareTask>> grouped = {};
     for (final task in tasks) {
       grouped.putIfAbsent(task.orchidId, () => []).add(task);
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: grouped.length,
-      itemBuilder: (context, index) {
-        final orchidId = grouped.keys.elementAt(index);
-        final orchidTasks = grouped[orchidId]!;
+    final slivers = <Widget>[];
+    for (final entry in grouped.entries) {
+      slivers.add(
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          sliver: SliverToBoxAdapter(
+            child: FutureBuilder<Orchid?>(
+              future: db.getOrchidById(entry.key),
+              builder: (context, orchidSnapshot) {
+                final orchid = orchidSnapshot.data;
+                final orchidName = orchid?.name ?? 'Unknown Orchid';
 
-        return FutureBuilder<Orchid?>(
-          future: db.getOrchidById(orchidId),
-          builder: (context, orchidSnapshot) {
-            final orchid = orchidSnapshot.data;
-            final orchidName = orchid?.name ?? 'Unknown Orchid';
-
-            return Card(
-              margin: const EdgeInsets.only(bottom: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Orchid header
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(12),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.local_florist,
-                          color: AppTheme.primaryGreen,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            orchidName,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+                return Card(
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Orchid header
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withValues(alpha: 0.08),
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(AppTheme.radiusCard),
                           ),
                         ),
-                      ],
-                    ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.local_florist,
+                              color: AppTheme.primary,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                orchidName,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Tasks
+                      ...entry.value.map((task) => _buildTaskTile(context, db, task, orchidName)),
+                    ],
                   ),
-                  // Tasks
-                  ...orchidTasks.map((task) => _buildTaskTile(context, db, task, orchidName)),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Bottom spacing for floating nav
+    slivers.add(const SliverPadding(padding: EdgeInsets.only(bottom: 16)));
+
+    return slivers;
   }
 
   Widget _buildTaskTile(BuildContext context, AppDatabase db, CareTask task, String orchidName) {
@@ -167,8 +148,8 @@ class _TodayScreenState extends State<TodayScreen> {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(8),
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
         ),
         child: Icon(icon, color: color),
       ),
@@ -176,7 +157,7 @@ class _TodayScreenState extends State<TodayScreen> {
         displayName,
         style: TextStyle(
           fontWeight: FontWeight.w500,
-          color: isOverdue ? Colors.red : null,
+          color: isOverdue ? AppTheme.statusOverdue : null,
         ),
       ),
       subtitle: Text(
@@ -184,7 +165,7 @@ class _TodayScreenState extends State<TodayScreen> {
             ? 'Overdue - was due ${DateFormat.MMMd().format(task.nextDue)}'
             : 'Due ${_formatDueDate(task.nextDue)}',
         style: TextStyle(
-          color: isOverdue ? Colors.red[300] : null,
+          color: isOverdue ? AppTheme.statusOverdue.withValues(alpha: 0.7) : AppTheme.textSecondary,
         ),
       ),
       trailing: Row(
@@ -199,7 +180,7 @@ class _TodayScreenState extends State<TodayScreen> {
           // Complete button
           IconButton(
             icon: const Icon(Icons.check_circle),
-            color: AppTheme.primaryGreen,
+            color: AppTheme.primary,
             tooltip: 'Mark complete',
             onPressed: () => _completeTask(context, db, task, orchidName),
           ),
@@ -271,7 +252,7 @@ class _TodayScreenState extends State<TodayScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('$careTypeName completed for $orchidName'),
-            backgroundColor: AppTheme.primaryGreen,
+            backgroundColor: AppTheme.primary,
           ),
         );
       }

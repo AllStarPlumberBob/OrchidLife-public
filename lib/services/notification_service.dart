@@ -1,9 +1,10 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/data/latest_10y.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import '../database/database.dart';
+import '../theme/app_theme.dart';
 
 class NotificationService {
   final AppDatabase _db;
@@ -14,12 +15,27 @@ class NotificationService {
 
   Future<void> init() async {
     tz.initializeTimeZones();
-    tz.setLocalLocation(tz.local);
+    _setLocalTimezone();
 
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
     const initSettings = InitializationSettings(android: androidSettings);
     await _plugin.initialize(initSettings);
+  }
+
+  /// Determine the device's local timezone and set it for the tz library.
+  /// tz.initializeTimeZones() loads the database but does NOT set tz.local,
+  /// so we must find a matching timezone by UTC offset.
+  void _setLocalTimezone() {
+    final offsetMs = DateTime.now().timeZoneOffset.inMilliseconds;
+    for (final location in tz.timeZoneDatabase.locations.values) {
+      if (location.currentTimeZone.offset == offsetMs) {
+        tz.setLocalLocation(location);
+        return;
+      }
+    }
+    // Fallback to UTC if no match found
+    tz.setLocalLocation(tz.getLocation('UTC'));
   }
 
   Future<bool> requestPermissions() async {
@@ -53,7 +69,8 @@ class NotificationService {
     final orchid = await _db.getOrchidById(task.orchidId);
     final orchidName = orchid?.name ?? 'Your orchid';
     final careTypeName = task.careType.name;
-    final displayName = _careTypeDisplayName(careTypeName);
+    final displayName = AppTheme.getCareTypeDisplayName(careTypeName);
+    final gerund = _careTypeGerund(careTypeName);
 
     const androidDetails = AndroidNotificationDetails(
       'orchidlife_care',
@@ -66,7 +83,7 @@ class NotificationService {
     await _plugin.zonedSchedule(
       task.id,
       'Time to ${displayName.toLowerCase()}',
-      '$orchidName needs ${displayName.toLowerCase()}ing',
+      '$orchidName needs $gerund',
       scheduledDate,
       const NotificationDetails(android: androidDetails),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -91,22 +108,22 @@ class NotificationService {
     }
   }
 
-  static String _careTypeDisplayName(String careType) {
+  static String _careTypeGerund(String careType) {
     switch (careType.toLowerCase()) {
       case 'water':
-        return 'Water';
+        return 'watering';
       case 'fertilize':
-        return 'Fertilize';
+        return 'fertilizing';
       case 'mist':
-        return 'Mist';
+        return 'misting';
       case 'inspect':
-        return 'Inspect';
+        return 'inspection';
       case 'repot':
-        return 'Repot';
+        return 'repotting';
       case 'prune':
-        return 'Prune';
+        return 'pruning';
       default:
-        return careType;
+        return 'care';
     }
   }
 }

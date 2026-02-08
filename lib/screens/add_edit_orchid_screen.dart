@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' show Value;
 import '../database/database.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/orchid_sliver_app_bar.dart';
 
 class AddEditOrchidScreen extends StatefulWidget {
   final Orchid? orchid;
@@ -51,131 +52,138 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.isEditing ? 'Edit Orchid' : 'Add Orchid'),
-      ),
       body: Form(
         key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // Name
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Name *',
-                hintText: 'Give your orchid a name',
-                prefixIcon: Icon(Icons.local_florist),
-                counterText: '', // Hide character counter
-              ),
-              maxLength: 100,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter a name';
-                }
-                return null;
-              },
-              textCapitalization: TextCapitalization.words,
+        child: CustomScrollView(
+          slivers: [
+            OrchidSliverAppBar(
+              title: widget.isEditing ? 'Edit Orchid' : 'Add Orchid',
+              showBackButton: true,
             ),
-            const SizedBox(height: 16),
-
-            // Variety
-            Autocomplete<String>(
-              initialValue: TextEditingValue(text: _varietyController.text),
-              optionsBuilder: (textEditingValue) {
-                if (textEditingValue.text.isEmpty) {
-                  return _commonVarieties;
-                }
-                return _commonVarieties.where((variety) =>
-                    variety.toLowerCase().contains(textEditingValue.text.toLowerCase()));
-              },
-              onSelected: (selection) {
-                _varietyController.text = selection;
-              },
-              fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-                // Sync with our controller
-                controller.text = _varietyController.text;
-                controller.addListener(() {
-                  _varietyController.text = controller.text;
-                });
-                return TextFormField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  decoration: const InputDecoration(
-                    labelText: 'Variety',
-                    hintText: 'e.g., Phalaenopsis',
-                    prefixIcon: Icon(Icons.category),
+            SliverPadding(
+              padding: const EdgeInsets.all(16),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  // Name
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Name *',
+                      hintText: 'Give your orchid a name',
+                      prefixIcon: Icon(Icons.local_florist),
+                      counterText: '', // Hide character counter
+                    ),
+                    maxLength: 100,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter a name';
+                      }
+                      return null;
+                    },
+                    textCapitalization: TextCapitalization.words,
                   ),
-                  textCapitalization: TextCapitalization.words,
-                );
-              },
-            ),
-            const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
-            // Location
-            TextFormField(
-              controller: _locationController,
-              decoration: const InputDecoration(
-                labelText: 'Location',
-                hintText: 'Where is this orchid placed?',
-                prefixIcon: Icon(Icons.location_on),
-              ),
-              textCapitalization: TextCapitalization.sentences,
-            ),
-            const SizedBox(height: 16),
+                  // Variety
+                  Autocomplete<String>(
+                    initialValue: TextEditingValue(text: _varietyController.text),
+                    optionsBuilder: (textEditingValue) {
+                      if (textEditingValue.text.isEmpty) {
+                        return _commonVarieties;
+                      }
+                      return _commonVarieties.where((variety) =>
+                          variety.toLowerCase().contains(textEditingValue.text.toLowerCase()));
+                    },
+                    onSelected: (selection) {
+                      _varietyController.text = selection;
+                    },
+                    fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                      return TextFormField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        decoration: const InputDecoration(
+                          labelText: 'Variety',
+                          hintText: 'e.g., Phalaenopsis',
+                          prefixIcon: Icon(Icons.category),
+                        ),
+                        textCapitalization: TextCapitalization.words,
+                        onChanged: (value) {
+                          _varietyController.text = value;
+                        },
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 20),
 
-            // Date acquired
-            ListTile(
-              leading: const Icon(Icons.calendar_today),
-              title: const Text('Date Acquired'),
-              subtitle: Text(
-                _dateAcquired != null
-                    ? '${_dateAcquired!.month}/${_dateAcquired!.day}/${_dateAcquired!.year}'
-                    : 'Not set',
-              ),
-              trailing: _dateAcquired != null
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () => setState(() => _dateAcquired = null),
-                    )
-                  : null,
-              onTap: _selectDate,
-            ),
-            const SizedBox(height: 16),
+                  // Location
+                  TextFormField(
+                    controller: _locationController,
+                    decoration: const InputDecoration(
+                      labelText: 'Location',
+                      hintText: 'Where is this orchid placed?',
+                      prefixIcon: Icon(Icons.location_on),
+                    ),
+                    textCapitalization: TextCapitalization.sentences,
+                  ),
+                  const SizedBox(height: 20),
 
-            // Notes
-            TextFormField(
-              controller: _notesController,
-              decoration: const InputDecoration(
-                labelText: 'Notes',
-                hintText: 'Any additional notes...',
-                prefixIcon: Icon(Icons.notes),
-                alignLabelWithHint: true,
-              ),
-              maxLines: 3,
-              textCapitalization: TextCapitalization.sentences,
-            ),
-            const SizedBox(height: 16),
+                  // Date acquired
+                  ListTile(
+                    leading: const Icon(Icons.calendar_today),
+                    title: const Text('Date Acquired'),
+                    subtitle: Text(
+                      _dateAcquired != null
+                          ? '${_dateAcquired!.month}/${_dateAcquired!.day}/${_dateAcquired!.year}'
+                          : 'Not set',
+                    ),
+                    trailing: _dateAcquired != null
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () => setState(() => _dateAcquired = null),
+                          )
+                        : null,
+                    onTap: _selectDate,
+                  ),
+                  const SizedBox(height: 20),
 
-            // Add default tasks checkbox (only for new orchids)
-            if (!widget.isEditing) ...[
-              SwitchListTile(
-                title: const Text('Add default care tasks'),
-                subtitle: const Text('Water (7 days), Fertilize (30 days)'),
-                value: _addDefaultTasks,
-                onChanged: (value) => setState(() => _addDefaultTasks = value),
-                activeTrackColor: AppTheme.primaryGreen,
-              ),
-              const SizedBox(height: 16),
-            ],
+                  // Notes
+                  TextFormField(
+                    controller: _notesController,
+                    decoration: const InputDecoration(
+                      labelText: 'Notes',
+                      hintText: 'Any additional notes...',
+                      prefixIcon: Icon(Icons.notes),
+                      alignLabelWithHint: true,
+                    ),
+                    maxLines: 3,
+                    textCapitalization: TextCapitalization.sentences,
+                  ),
+                  const SizedBox(height: 20),
 
-            // Save button
-            FilledButton.icon(
-              onPressed: _saveOrchid,
-              icon: const Icon(Icons.save),
-              label: Text(widget.isEditing ? 'Save Changes' : 'Add Orchid'),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                  // Add default tasks checkbox (only for new orchids)
+                  if (!widget.isEditing) ...[
+                    SwitchListTile(
+                      title: const Text('Add default care tasks'),
+                      subtitle: const Text('Water (7 days), Fertilize (30 days)'),
+                      value: _addDefaultTasks,
+                      onChanged: (value) => setState(() => _addDefaultTasks = value),
+                      activeTrackColor: AppTheme.primary,
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+
+                  // Save button
+                  FilledButton.icon(
+                    onPressed: _saveOrchid,
+                    icon: const Icon(Icons.save),
+                    label: Text(widget.isEditing ? 'Save Changes' : 'Add Orchid'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
+                  // Bottom spacing for floating nav on pushed screens
+                  const SizedBox(height: 32),
+                ]),
               ),
             ),
           ],
@@ -262,7 +270,7 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${_nameController.text.trim()} added!'),
-            backgroundColor: AppTheme.primaryGreen,
+            backgroundColor: AppTheme.primary,
           ),
         );
       }

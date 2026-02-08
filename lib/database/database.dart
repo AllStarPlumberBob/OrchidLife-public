@@ -81,6 +81,18 @@ class AppDatabase extends _$AppDatabase {
   @override
   int get schemaVersion => 1;
 
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          // Add migration steps here when schemaVersion is bumped.
+          // Example:
+          // if (from < 2) {
+          //   await m.addColumn(careTasks, careTasks.newColumn);
+          // }
+        },
+      );
+
   // ============================================================
   // ORCHID OPERATIONS
   // ============================================================
@@ -133,6 +145,23 @@ class AppDatabase extends _$AppDatabase {
           ..where((t) => t.nextDue.isSmallerOrEqualValue(endOfDay))
           ..where((t) => t.enabled.equals(true)))
         .get();
+  }
+
+  /// Returns a map of orchidId → count of tasks due today (or overdue).
+  Stream<Map<int, int>> watchDueTaskCountsByOrchid() {
+    final now = DateTime.now();
+    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+    return (select(careTasks)
+          ..where((t) => t.nextDue.isSmallerOrEqualValue(endOfDay))
+          ..where((t) => t.enabled.equals(true)))
+        .watch()
+        .map((tasks) {
+      final counts = <int, int>{};
+      for (final task in tasks) {
+        counts[task.orchidId] = (counts[task.orchidId] ?? 0) + 1;
+      }
+      return counts;
+    });
   }
 
   Stream<List<CareTask>> watchTasksDueToday() {

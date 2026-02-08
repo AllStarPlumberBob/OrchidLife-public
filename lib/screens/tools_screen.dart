@@ -11,6 +11,9 @@ import 'dart:io' show File, Platform;
 import '../database/database.dart';
 import '../theme/app_theme.dart';
 import '../services/light_sensor_service.dart';
+import '../widgets/orchid_sliver_app_bar.dart';
+import '../widgets/orchid_card.dart';
+import '../widgets/page_transitions.dart';
 
 class ToolsScreen extends StatelessWidget {
   const ToolsScreen({super.key});
@@ -18,45 +21,50 @@ class ToolsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tools'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildToolCard(
-            context,
-            icon: Icons.light_mode,
-            title: 'Light Meter',
-            subtitle: 'Measure light levels for optimal placement',
-            color: Colors.amber,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const LuxMeterScreen()),
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildToolCard(
-            context,
-            icon: Icons.camera_alt,
-            title: 'AI Plant Doctor',
-            subtitle: 'Take a photo and get expert diagnosis',
-            color: AppTheme.primaryGreen,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AIHandoffScreen()),
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildToolCard(
-            context,
-            icon: Icons.book,
-            title: 'Care Guide',
-            subtitle: 'Learn about orchid care basics',
-            color: AppTheme.inspectPurple,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const CareGuideScreen()),
+      body: CustomScrollView(
+        slivers: [
+          const OrchidSliverAppBar(title: 'Tools'),
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                _buildToolCard(
+                  context,
+                  icon: Icons.light_mode,
+                  title: 'Light Meter',
+                  subtitle: 'Measure light levels for optimal placement',
+                  color: AppTheme.statusNeedsCare,
+                  onTap: () => Navigator.push(
+                    context,
+                    OrchidPageRoute(builder: (_) => const LuxMeterScreen()),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                _buildToolCard(
+                  context,
+                  icon: Icons.camera_alt,
+                  title: 'AI Plant Doctor',
+                  subtitle: 'Take a photo and get expert diagnosis',
+                  color: AppTheme.primary,
+                  onTap: () => Navigator.push(
+                    context,
+                    OrchidPageRoute(builder: (_) => const AIHandoffScreen()),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                _buildToolCard(
+                  context,
+                  icon: Icons.book,
+                  title: 'Care Guide',
+                  subtitle: 'Learn about orchid care basics',
+                  color: AppTheme.inspectPurple,
+                  onTap: () => Navigator.push(
+                    context,
+                    OrchidPageRoute(builder: (_) => const CareGuideScreen()),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ]),
             ),
           ),
         ],
@@ -72,49 +80,44 @@ class ToolsScreen extends StatelessWidget {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 28),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: Colors.grey),
-            ],
+    return OrchidCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+            ),
+            child: Icon(icon, color: color, size: 28),
           ),
-        ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
+        ],
       ),
     );
   }
@@ -203,11 +206,11 @@ class _LuxMeterScreenState extends State<LuxMeterScreen> {
   }
 
   Color _getLightColor(double lux) {
-    if (lux < 500) return Colors.grey;
-    if (lux < 1000) return Colors.blue;
-    if (lux < 5000) return Colors.green;
-    if (lux < 10000) return Colors.orange;
-    return Colors.red;
+    if (lux < 500) return AppTheme.textSecondary;
+    if (lux < 1000) return AppTheme.statusUpcoming;
+    if (lux < 5000) return AppTheme.statusCompleted;
+    if (lux < 10000) return AppTheme.statusNeedsCare;
+    return AppTheme.statusOverdue;
   }
 
   String _getOrchidRecommendation(double lux) {
@@ -229,178 +232,183 @@ class _LuxMeterScreenState extends State<LuxMeterScreen> {
     final db = Provider.of<AppDatabase>(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Light Meter'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            // Lux display
-            Expanded(
+      body: CustomScrollView(
+        slivers: [
+          const OrchidSliverAppBar(
+            title: 'Light Meter',
+            showBackButton: true,
+          ),
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Padding(
+              padding: const EdgeInsets.all(24),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Sensor status banners
-                  if (_hasSensor == null)
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 16),
-                      child: LinearProgressIndicator(),
-                    ),
-                  if (_hasSensor == false)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Card(
-                        color: Colors.orange.shade50,
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Row(
-                            children: [
-                              Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  _sensorError ?? 'This device does not have an ambient light sensor.',
-                                  style: TextStyle(color: Colors.orange.shade900),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (_sensorError != null && _hasSensor == true)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Card(
-                        color: Colors.red.shade50,
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Row(
-                            children: [
-                              Icon(Icons.error_outline, color: Colors.red.shade700),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  _sensorError!,
-                                  style: TextStyle(color: Colors.red.shade900),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  Container(
-                    width: 200,
-                    height: 200,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _getLightColor(_currentLux).withValues(alpha: 0.1),
-                      border: Border.all(
-                        color: _getLightColor(_currentLux),
-                        width: 4,
-                      ),
-                    ),
+                  // Lux display
+                  Expanded(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        // Sensor status banners
+                        if (_hasSensor == null)
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 16),
+                            child: LinearProgressIndicator(),
+                          ),
+                        if (_hasSensor == false)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: Card(
+                              color: AppTheme.statusNeedsCare.withValues(alpha: 0.1),
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.warning_amber_rounded, color: AppTheme.statusNeedsCare),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        _sensorError ?? 'This device does not have an ambient light sensor.',
+                                        style: const TextStyle(color: AppTheme.textPrimary),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (_sensorError != null && _hasSensor == true)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: Card(
+                              color: AppTheme.statusOverdue.withValues(alpha: 0.1),
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.error_outline, color: AppTheme.statusOverdue),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        _sensorError!,
+                                        style: const TextStyle(color: AppTheme.textPrimary),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        Container(
+                          width: 200,
+                          height: 200,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _getLightColor(_currentLux).withValues(alpha: 0.1),
+                            border: Border.all(
+                              color: _getLightColor(_currentLux),
+                              width: 4,
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                _currentLux.toStringAsFixed(0),
+                                style: TextStyle(
+                                  fontSize: 48,
+                                  fontWeight: FontWeight.bold,
+                                  color: _getLightColor(_currentLux),
+                                ),
+                              ),
+                              const Text(
+                                'lux',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
                         Text(
-                          _currentLux.toStringAsFixed(0),
+                          _getLightLevel(_currentLux),
                           style: TextStyle(
-                            fontSize: 48,
+                            fontSize: 24,
                             fontWeight: FontWeight.bold,
                             color: _getLightColor(_currentLux),
                           ),
                         ),
-                        const Text(
-                          'lux',
-                          style: TextStyle(
-                            fontSize: 20,
-                            color: Colors.grey,
+                        const SizedBox(height: 16),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Text(
+                            _getOrchidRecommendation(_currentLux),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 16),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  Text(
-                    _getLightLevel(_currentLux),
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: _getLightColor(_currentLux),
-                    ),
+
+                  // Controls
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: _hasSensor == true
+                              ? (_isReading ? _stopReading : _startReading)
+                              : null,
+                          icon: Icon(_isReading ? Icons.stop : Icons.play_arrow),
+                          label: Text(_isReading ? 'Stop' : 'Start'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _isReading ? AppTheme.statusOverdue : AppTheme.primary,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _currentLux > 0
+                              ? () => _saveReading(context, db)
+                              : null,
+                          icon: const Icon(Icons.save),
+                          label: const Text('Save'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Text(
-                      _getOrchidRecommendation(_currentLux),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 16),
+
+                  // Light guide
+                  OrchidCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Light Level Guide',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        _buildLightGuideRow('< 500 lux', 'Low', AppTheme.textSecondary),
+                        _buildLightGuideRow('500-1000', 'Medium', AppTheme.statusUpcoming),
+                        _buildLightGuideRow('1000-5000', 'Bright Indirect', AppTheme.statusCompleted),
+                        _buildLightGuideRow('5000-10000', 'Bright', AppTheme.statusNeedsCare),
+                        _buildLightGuideRow('> 10000', 'Direct Sun', AppTheme.statusOverdue),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-
-            // Controls
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: _hasSensor == true
-                        ? (_isReading ? _stopReading : _startReading)
-                        : null,
-                    icon: Icon(_isReading ? Icons.stop : Icons.play_arrow),
-                    label: Text(_isReading ? 'Stop' : 'Start'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _isReading ? Colors.red : AppTheme.primaryGreen,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _currentLux > 0
-                        ? () => _saveReading(context, db)
-                        : null,
-                    icon: const Icon(Icons.save),
-                    label: const Text('Save'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Light guide
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Light Level Guide',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildLightGuideRow('< 500 lux', 'Low', Colors.grey),
-                    _buildLightGuideRow('500-1000', 'Medium', Colors.blue),
-                    _buildLightGuideRow('1000-5000', 'Bright Indirect', Colors.green),
-                    _buildLightGuideRow('5000-10000', 'Bright', Colors.orange),
-                    _buildLightGuideRow('> 10000', 'Direct Sun', Colors.red),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -573,136 +581,144 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('AI Plant Doctor'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Instructions
-            Card(
-              color: AppTheme.primaryGreen.withValues(alpha: 0.1),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    const Icon(Icons.info_outline, color: AppTheme.primaryGreen),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        _isTextMode
-                            ? 'Select a problem category and search for solutions.'
-                            : 'Take a photo of your orchid and send it to an AI assistant for diagnosis.',
-                        style: const TextStyle(color: AppTheme.primaryGreenDark),
+      body: CustomScrollView(
+        slivers: [
+          const OrchidSliverAppBar(
+            title: 'AI Plant Doctor',
+            showBackButton: true,
+          ),
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Instructions
+                  Card(
+                    color: AppTheme.primary.withValues(alpha: 0.08),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info_outline, color: AppTheme.primary),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _isTextMode
+                                  ? 'Select a problem category and search for solutions.'
+                                  : 'Take a photo of your orchid and send it to an AI assistant for diagnosis.',
+                              style: const TextStyle(color: AppTheme.primaryDark),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Mode toggle
-            SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(
-                  value: false,
-                  icon: Icon(Icons.camera_alt),
-                  label: Text('Photo'),
-                ),
-                ButtonSegment(
-                  value: true,
-                  icon: Icon(Icons.edit_note),
-                  label: Text('Text'),
-                ),
-              ],
-              selected: {_isTextMode},
-              onSelectionChanged: (selection) {
-                setState(() {
-                  _isTextMode = selection.first;
-                  // Clear the other mode's selection
-                  if (_isTextMode) {
-                    _selectedImage = null;
-                  } else {
-                    _selectedProblem = null;
-                  }
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Content area - Photo or Text mode
-            Expanded(
-              child: _isTextMode ? _buildTextModeContent() : _buildPhotoModeContent(),
-            ),
-            const SizedBox(height: 16),
-
-            // Prompt customization (for photo mode only)
-            if (!_isTextMode) ...[
-              TextField(
-                controller: _promptController,
-                maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Your question',
-                  hintText: 'Describe the issue...',
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // AI service buttons
-            const Text(
-              'Get help from:',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _buildAIButton(
-                  'Google',
-                  Icons.search,
-                  Colors.blue,
-                  _isTextMode ? () => _searchGoogle() : () => _openGoogleLens(),
-                ),
-                _buildAIButton(
-                  'ChatGPT',
-                  Icons.chat_bubble,
-                  const Color(0xFF10A37F),
-                  () => _openChatGPT(),
-                ),
-                _buildAIButton(
-                  'Gemini',
-                  Icons.auto_awesome,
-                  Colors.blueAccent,
-                  () => _openGemini(),
-                ),
-                _buildAIButton(
-                  'Claude',
-                  Icons.psychology,
-                  const Color(0xFFD97706),
-                  () => _openClaude(),
-                ),
-                _buildAIButton(
-                  'Assistant',
-                  Icons.mic,
-                  Colors.red,
-                  () => _launchVoiceAssistant(),
-                ),
-                if (!_isTextMode)
-                  _buildAIButton(
-                    'Share...',
-                    Icons.share,
-                    Colors.grey,
-                    () => _shareToAny(),
                   ),
-              ],
+                  const SizedBox(height: 16),
+
+                  // Mode toggle
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(
+                        value: false,
+                        icon: Icon(Icons.camera_alt),
+                        label: Text('Photo'),
+                      ),
+                      ButtonSegment(
+                        value: true,
+                        icon: Icon(Icons.edit_note),
+                        label: Text('Text'),
+                      ),
+                    ],
+                    selected: {_isTextMode},
+                    onSelectionChanged: (selection) {
+                      setState(() {
+                        _isTextMode = selection.first;
+                        // Clear the other mode's selection
+                        if (_isTextMode) {
+                          _selectedImage = null;
+                        } else {
+                          _selectedProblem = null;
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Content area - Photo or Text mode
+                  Expanded(
+                    child: _isTextMode ? _buildTextModeContent() : _buildPhotoModeContent(),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Prompt customization (for photo mode only)
+                  if (!_isTextMode) ...[
+                    TextField(
+                      controller: _promptController,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        labelText: 'Your question',
+                        hintText: 'Describe the issue...',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // AI service buttons
+                  const Text(
+                    'Get help from:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _buildAIButton(
+                        'Google',
+                        Icons.search,
+                        AppTheme.statusUpcoming,
+                        _isTextMode ? () => _searchGoogle() : () => _openGoogleLens(),
+                      ),
+                      _buildAIButton(
+                        'ChatGPT',
+                        Icons.chat_bubble,
+                        const Color(0xFF10A37F),
+                        () => _openChatGPT(),
+                      ),
+                      _buildAIButton(
+                        'Gemini',
+                        Icons.auto_awesome,
+                        AppTheme.statusUpcoming,
+                        () => _openGemini(),
+                      ),
+                      _buildAIButton(
+                        'Claude',
+                        Icons.psychology,
+                        AppTheme.fertilizerOrange,
+                        () => _openClaude(),
+                      ),
+                      _buildAIButton(
+                        'Assistant',
+                        Icons.mic,
+                        AppTheme.statusOverdue,
+                        () => _launchVoiceAssistant(),
+                      ),
+                      if (!_isTextMode)
+                        _buildAIButton(
+                          'Share...',
+                          Icons.share,
+                          AppTheme.textSecondary,
+                          () => _shareToAny(),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -712,16 +728,16 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
       onTap: _pickImage,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.grey[100],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[300]!),
+          color: AppTheme.surfaceVariant,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+          border: Border.all(color: AppTheme.cardBorder),
         ),
         child: _selectedImage != null
             ? Stack(
                 fit: StackFit.expand,
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                     child: Image.file(
                       File(_selectedImage!.path),
                       fit: BoxFit.cover,
@@ -746,11 +762,11 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.add_a_photo, size: 64, color: Colors.grey[400]),
+                  Icon(Icons.add_a_photo, size: 64, color: AppTheme.textSecondary.withValues(alpha: 0.5)),
                   const SizedBox(height: 16),
-                  Text(
+                  const Text(
                     'Tap to take or select a photo',
-                    style: TextStyle(color: Colors.grey[600]),
+                    style: TextStyle(color: AppTheme.textSecondary),
                   ),
                 ],
               ),
@@ -791,7 +807,7 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
                   ),
                 ),
                 selected: isSelected,
-                selectedColor: AppTheme.primaryGreen,
+                selectedColor: AppTheme.primary,
                 onSelected: (selected) {
                   setState(() {
                     _selectedProblem = selected ? problem : null;
@@ -804,12 +820,12 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
         if (_selectedProblem != null) ...[
           const SizedBox(height: 12),
           Card(
-            color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+            color: AppTheme.primary.withValues(alpha: 0.08),
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
-                  const Icon(Icons.check_circle, color: AppTheme.primaryGreen),
+                  const Icon(Icons.check_circle, color: AppTheme.primary),
                   const SizedBox(width: 8),
                   Text(
                     'Selected: $_selectedProblem',
@@ -827,7 +843,7 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
   Widget _buildAIButton(String label, IconData icon, Color color, VoidCallback onTap) {
     return OutlinedButton.icon(
       onPressed: _hasSelection ? onTap : null,
-      icon: Icon(icon, color: _hasSelection ? color : Colors.grey),
+      icon: Icon(icon, color: _hasSelection ? color : AppTheme.textSecondary),
       label: Text(label),
     );
   }
@@ -871,7 +887,7 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
                     ? 'Could not access camera. Please check permissions.'
                     : 'Could not access photos. Please check permissions.',
               ),
-              backgroundColor: Colors.red,
+              backgroundColor: AppTheme.statusOverdue,
             ),
           );
         }
@@ -989,53 +1005,61 @@ class CareGuideScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Orchid Care Guide'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildSection(
-            'Watering',
-            Icons.water_drop,
-            AppTheme.waterBlue,
-            'Water when the potting medium is nearly dry. For most orchids, this means every 7-10 days. '
-            'Water thoroughly and let excess drain completely. Never let orchids sit in water.',
+      body: CustomScrollView(
+        slivers: [
+          const OrchidSliverAppBar(
+            title: 'Orchid Care Guide',
+            showBackButton: true,
           ),
-          _buildSection(
-            'Light',
-            Icons.light_mode,
-            Colors.amber,
-            'Most orchids prefer bright, indirect light. East-facing windows are ideal. '
-            'Direct sunlight can burn leaves. Use the Light Meter tool to check your spots!',
-          ),
-          _buildSection(
-            'Humidity',
-            Icons.grain,
-            AppTheme.mistCyan,
-            'Orchids thrive in 50-70% humidity. Mist leaves in the morning, use a humidity tray, '
-            'or group plants together. Avoid misting at night to prevent fungal issues.',
-          ),
-          _buildSection(
-            'Fertilizing',
-            Icons.eco,
-            AppTheme.fertilizerOrange,
-            'Feed weekly with a diluted orchid fertilizer (1/4 strength) or monthly at full strength. '
-            'Reduce or stop fertilizing when not actively growing.',
-          ),
-          _buildSection(
-            'Temperature',
-            Icons.thermostat,
-            Colors.red,
-            'Most orchids prefer 65-80\u00b0F (18-27\u00b0C) during the day and a 10-15\u00b0F drop at night. '
-            'This temperature variation can trigger blooming in many species.',
-          ),
-          _buildSection(
-            'Repotting',
-            Icons.yard,
-            AppTheme.repotBrown,
-            'Repot every 1-2 years or when the medium breaks down. Use fresh orchid bark mix. '
-            'Best done after flowering when new roots are growing.',
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                _buildSection(
+                  'Watering',
+                  Icons.water_drop,
+                  AppTheme.waterBlue,
+                  'Water when the potting medium is nearly dry. For most orchids, this means every 7-10 days. '
+                  'Water thoroughly and let excess drain completely. Never let orchids sit in water.',
+                ),
+                _buildSection(
+                  'Light',
+                  Icons.light_mode,
+                  AppTheme.statusNeedsCare,
+                  'Most orchids prefer bright, indirect light. East-facing windows are ideal. '
+                  'Direct sunlight can burn leaves. Use the Light Meter tool to check your spots!',
+                ),
+                _buildSection(
+                  'Humidity',
+                  Icons.grain,
+                  AppTheme.mistCyan,
+                  'Orchids thrive in 50-70% humidity. Mist leaves in the morning, use a humidity tray, '
+                  'or group plants together. Avoid misting at night to prevent fungal issues.',
+                ),
+                _buildSection(
+                  'Fertilizing',
+                  Icons.eco,
+                  AppTheme.fertilizerOrange,
+                  'Feed weekly with a diluted orchid fertilizer (1/4 strength) or monthly at full strength. '
+                  'Reduce or stop fertilizing when not actively growing.',
+                ),
+                _buildSection(
+                  'Temperature',
+                  Icons.thermostat,
+                  AppTheme.statusOverdue,
+                  'Most orchids prefer 65-80\u00b0F (18-27\u00b0C) during the day and a 10-15\u00b0F drop at night. '
+                  'This temperature variation can trigger blooming in many species.',
+                ),
+                _buildSection(
+                  'Repotting',
+                  Icons.yard,
+                  AppTheme.repotBrown,
+                  'Repot every 1-2 years or when the medium breaks down. Use fresh orchid bark mix. '
+                  'Best done after flowering when new roots are growing.',
+                ),
+                const SizedBox(height: 32),
+              ]),
+            ),
           ),
         ],
       ),
@@ -1043,41 +1067,37 @@ class CareGuideScreen extends StatelessWidget {
   }
 
   Widget _buildSection(String title, IconData icon, Color color, String content) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, color: color),
+    return OrchidCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                 ),
-                const SizedBox(width: 12),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                child: Icon(icon, color: color),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              content,
-              style: const TextStyle(height: 1.5),
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            content,
+            style: const TextStyle(height: 1.5),
+          ),
+        ],
       ),
     );
   }

@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../database/database.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/orchid_sliver_app_bar.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -27,6 +28,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
       _defaultNotifyTime = TimeOfDay(
@@ -52,155 +54,157 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final db = Provider.of<AppDatabase>(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-      ),
-      body: ListView(
-        children: [
-          // Notifications section
-          _buildSectionHeader('Notifications'),
-          SwitchListTile(
-            title: const Text('Enable Notifications'),
-            subtitle: Text(_isTogglingNotifications
-                ? 'Updating...'
-                : 'Get reminders for care tasks'),
-            value: _notificationsEnabled,
-            onChanged: _isTogglingNotifications
-                ? null  // Disable during async operation
-                : (value) async {
-                    setState(() => _isTogglingNotifications = true);
-                    final notif = Provider.of<NotificationService>(context, listen: false);
-                    final messenger = ScaffoldMessenger.of(context);
-                    try {
-                      if (value) {
-                        final granted = await notif.requestPermissions();
-                        if (!granted) {
-                          if (mounted) {
-                            messenger.showSnackBar(
-                              const SnackBar(content: Text('Notification permission denied')),
-                            );
+      body: CustomScrollView(
+        slivers: [
+          const OrchidSliverAppBar(title: 'Settings'),
+          SliverList(
+            delegate: SliverChildListDelegate([
+              // Notifications section
+              _buildSectionHeader('Notifications'),
+              SwitchListTile(
+                title: const Text('Enable Notifications'),
+                subtitle: Text(_isTogglingNotifications
+                    ? 'Updating...'
+                    : 'Get reminders for care tasks'),
+                value: _notificationsEnabled,
+                onChanged: _isTogglingNotifications
+                    ? null  // Disable during async operation
+                    : (value) async {
+                        setState(() => _isTogglingNotifications = true);
+                        final notif = Provider.of<NotificationService>(context, listen: false);
+                        final messenger = ScaffoldMessenger.of(context);
+                        try {
+                          if (value) {
+                            final granted = await notif.requestPermissions();
+                            if (!granted) {
+                              if (mounted) {
+                                messenger.showSnackBar(
+                                  const SnackBar(content: Text('Notification permission denied')),
+                                );
+                              }
+                              return;
+                            }
+                            if (mounted) setState(() => _notificationsEnabled = true);
+                            await _saveSettings();
+                            await notif.rescheduleAllTasks();
+                          } else {
+                            if (mounted) setState(() => _notificationsEnabled = false);
+                            await _saveSettings();
+                            await notif.cancelAllNotifications();
                           }
-                          return;
+                        } finally {
+                          if (mounted) setState(() => _isTogglingNotifications = false);
                         }
-                        if (mounted) setState(() => _notificationsEnabled = true);
-                        await _saveSettings();
-                        await notif.rescheduleAllTasks();
-                      } else {
-                        if (mounted) setState(() => _notificationsEnabled = false);
-                        await _saveSettings();
-                        await notif.cancelAllNotifications();
-                      }
-                    } finally {
-                      if (mounted) setState(() => _isTogglingNotifications = false);
-                    }
-                  },
-            activeTrackColor: AppTheme.primaryGreen,
-          ),
-          ListTile(
-            title: const Text('Default Notification Time'),
-            subtitle: Text(_defaultNotifyTime.format(context)),
-            trailing: const Icon(Icons.chevron_right),
-            enabled: _notificationsEnabled,
-            onTap: _notificationsEnabled ? _selectNotifyTime : null,
-          ),
-          const Divider(),
+                      },
+                activeTrackColor: AppTheme.primary,
+              ),
+              ListTile(
+                title: const Text('Default Notification Time'),
+                subtitle: Text(_defaultNotifyTime.format(context)),
+                trailing: const Icon(Icons.chevron_right),
+                enabled: _notificationsEnabled,
+                onTap: _notificationsEnabled ? _selectNotifyTime : null,
+              ),
+              const Divider(),
 
-          // Default intervals section
-          _buildSectionHeader('Default Care Intervals'),
-          ListTile(
-            title: const Text('Watering'),
-            subtitle: Text('Every $_defaultWaterInterval days'),
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppTheme.waterBlue.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
+              // Default intervals section
+              _buildSectionHeader('Default Care Intervals'),
+              ListTile(
+                title: const Text('Watering'),
+                subtitle: Text('Every $_defaultWaterInterval days'),
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppTheme.waterBlue.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                  ),
+                  child: const Icon(Icons.water_drop, color: AppTheme.waterBlue),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _selectInterval('water'),
               ),
-              child: const Icon(Icons.water_drop, color: AppTheme.waterBlue),
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _selectInterval('water'),
-          ),
-          ListTile(
-            title: const Text('Fertilizing'),
-            subtitle: Text('Every $_defaultFertilizeInterval days'),
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppTheme.fertilizerOrange.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
+              ListTile(
+                title: const Text('Fertilizing'),
+                subtitle: Text('Every $_defaultFertilizeInterval days'),
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppTheme.fertilizerOrange.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                  ),
+                  child: const Icon(Icons.eco, color: AppTheme.fertilizerOrange),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _selectInterval('fertilize'),
               ),
-              child: const Icon(Icons.eco, color: AppTheme.fertilizerOrange),
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _selectInterval('fertilize'),
-          ),
-          const Divider(),
+              const Divider(),
 
-          // Data management section
-          _buildSectionHeader('Data Management'),
-          ListTile(
-            title: const Text('Clear Demo Data'),
-            subtitle: const Text('Remove the demo orchid and its data'),
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
+              // Data management section
+              _buildSectionHeader('Data Management'),
+              ListTile(
+                title: const Text('Clear Demo Data'),
+                subtitle: const Text('Remove the demo orchid and its data'),
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppTheme.statusNeedsCare.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                  ),
+                  child: const Icon(Icons.cleaning_services, color: AppTheme.statusNeedsCare),
+                ),
+                onTap: () => _clearDemoData(context, db),
               ),
-              child: const Icon(Icons.cleaning_services, color: Colors.orange),
-            ),
-            onTap: () => _clearDemoData(context, db),
-          ),
-          ListTile(
-            title: const Text('Export Data'),
-            subtitle: const Text('Coming soon'),
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
+              ListTile(
+                title: const Text('Export Data'),
+                subtitle: const Text('Coming soon'),
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppTheme.statusUpcoming.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                  ),
+                  child: const Icon(Icons.download, color: AppTheme.statusUpcoming),
+                ),
+                enabled: false,
               ),
-              child: const Icon(Icons.download, color: Colors.blue),
-            ),
-            enabled: false,
-          ),
-          const Divider(),
+              const Divider(),
 
-          // About section
-          _buildSectionHeader('About'),
-          ListTile(
-            title: const Text('OrchidLife'),
-            subtitle: const Text('Version 1.0.0'),
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryGreen.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
+              // About section
+              _buildSectionHeader('About'),
+              ListTile(
+                title: const Text('OrchidLife'),
+                subtitle: const Text('Version 1.0.0'),
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                  ),
+                  child: const Icon(Icons.local_florist, color: AppTheme.primary),
+                ),
               ),
-              child: const Icon(Icons.local_florist, color: AppTheme.primaryGreen),
-            ),
+              ListTile(
+                title: const Text('Privacy Policy'),
+                trailing: const Icon(Icons.open_in_new),
+                onTap: () {
+                  // TODO: Open privacy policy
+                },
+              ),
+              ListTile(
+                title: const Text('Send Feedback'),
+                trailing: const Icon(Icons.email),
+                onTap: () {
+                  // TODO: Open email
+                },
+              ),
+              const SizedBox(height: 32),
+            ]),
           ),
-          ListTile(
-            title: const Text('Privacy Policy'),
-            trailing: const Icon(Icons.open_in_new),
-            onTap: () {
-              // TODO: Open privacy policy
-            },
-          ),
-          ListTile(
-            title: const Text('Send Feedback'),
-            trailing: const Icon(Icons.email),
-            onTap: () {
-              // TODO: Open email
-            },
-          ),
-          const SizedBox(height: 32),
         ],
       ),
     );
@@ -212,9 +216,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Text(
         title,
         style: const TextStyle(
-          fontSize: 14,
+          fontSize: 15,
           fontWeight: FontWeight.bold,
-          color: AppTheme.primaryGreen,
+          color: AppTheme.primary,
         ),
       ),
     );
@@ -301,7 +305,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.statusOverdue),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Clear'),
           ),

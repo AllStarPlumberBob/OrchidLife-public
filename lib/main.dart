@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'database/database.dart';
 import 'services/notification_service.dart';
 import 'services/light_sensor_service.dart';
@@ -12,13 +13,24 @@ void main() async {
   // Initialize database
   final database = AppDatabase();
 
-  // Insert demo data on first run
-  await database.insertDemoData();
+  try {
+    // Insert demo data on first run only
+    final prefs = await SharedPreferences.getInstance();
+    if (!(prefs.getBool('demo_data_inserted') ?? false)) {
+      await database.insertDemoData();
+      await prefs.setBool('demo_data_inserted', true);
+    }
+  } catch (e) {
+    debugPrint('Demo data initialization error: $e');
+  }
 
-  // Initialize notification service
+  // Initialize notification service (timezone + plugin only, no scheduling yet)
   final notificationService = NotificationService(database);
-  await notificationService.init();
-  await notificationService.rescheduleAllTasks();
+  try {
+    await notificationService.init();
+  } catch (e) {
+    debugPrint('Notification initialization error: $e');
+  }
 
   runApp(
     MultiProvider(

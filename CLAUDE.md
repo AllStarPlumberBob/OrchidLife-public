@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 OrchidLife is a Flutter mobile app for orchid care management. It tracks orchids, schedules care tasks (watering, fertilizing, etc.), includes a lux meter for light measurement, and provides AI photo handoff to external services. Primary target is Android (namespace: `com.orchidlife.orchidlife`).
 
-**Current status:** Early development. The active `lib/main.dart` is still the Flutter template. All implementation files are staged in the `Code Files/` directory and need to be integrated into `lib/` per the structure in `Code Files/SETUP_INSTRUCTIONS.md`.
+**Current status:** Core features implemented. Database layer (Drift), screens, services, and theme are all in `lib/`.
 
 ## Build & Development Commands
 
@@ -17,7 +17,7 @@ flutter pub get
 # Run the app (on connected device/emulator)
 flutter run
 
-# Generate Isar database code (required after model changes)
+# Generate Drift database code (required after table/schema changes)
 flutter pub run build_runner build
 flutter pub run build_runner build --delete-conflicting-outputs  # if conflicts
 
@@ -35,6 +35,7 @@ dart fix --apply
 
 # Build Android APK / App Bundle
 flutter build apk
+flutter build apk --debug
 flutter build appbundle
 
 # Clean rebuild
@@ -43,62 +44,64 @@ flutter clean && flutter pub get
 
 ## Architecture
 
-### Target Directory Layout (once staged files are integrated)
+### Directory Layout
 
 ```
 lib/
-  main.dart                    # Entry point - initializes Isar DB, creates demo data on first launch
-  models/
-    orchid.dart                # Isar collection - orchid profiles with variety, bloom status, color tags
-    care_task.dart             # Isar collection - scheduled care with interval, due date tracking
-    care_log.dart              # Isar collection - completion history (taken/skipped/missed/snoozed)
-    light_reading.dart         # Isar collection - lux meter readings with level classification
+  main.dart                    # Entry point - initializes Drift DB, demo data (first run), notifications
+  database/
+    database.dart              # Drift database - table definitions, queries, demo data
+    database.g.dart            # Generated Drift code (do not edit)
   services/
-    database_service.dart      # Singleton Isar DB access (4 collections: Orchid, CareTask, CareLog, LightReading)
+    notification_service.dart  # flutter_local_notifications scheduling, timezone init
+    light_sensor_service.dart  # Ambient light sensor for lux meter
   screens/
     main_navigation.dart       # Bottom nav container (Today, Orchids, Tools, Settings)
-    today_screen.dart          # Home view - care tasks due today
-    orchid_list_screen.dart    # Grid of all orchids
-    orchid_detail_screen.dart  # Individual orchid with care schedule
-    add_edit_orchid_screen.dart
+    today_screen.dart          # Home view - care tasks due today, grouped by orchid
+    orchid_list_screen.dart    # List of all orchids with due-task counts
+    orchid_detail_screen.dart  # Individual orchid with care schedule + history
+    add_edit_orchid_screen.dart # Add/edit orchid form
     tools_screen.dart          # Lux meter + AI photo handoff
-    settings_screen.dart       # Stats and preferences
+    settings_screen.dart       # Notifications, default intervals, data management
   theme/
-    app_theme.dart             # Material 3 theme - green palette (#2E7D32 primary)
-  data/
-    demo_data.dart             # First-launch sample Phalaenopsis with 4 care tasks
+    app_theme.dart             # Material 3 theme - green palette (#2E7D32 primary), care type helpers
 ```
 
 ### Key Patterns
 
-- **Database:** Isar (local NoSQL). Models use `@collection` annotation and require code generation (`build_runner`). Each model has a `part 'filename.g.dart';` directive.
-- **State management:** StatefulWidget with `setState()` (no BLoC/Provider/Riverpod).
-- **Database access:** `DatabaseService` singleton - call `DatabaseService.getInstance()` to initialize, then `DatabaseService.isar` for the Isar instance.
+- **Database:** Drift (SQLite). Tables defined as classes in `database.dart`, generated code in `database.g.dart` via `build_runner`. Single `AppDatabase` class holds all queries.
+- **State management:** Provider for dependency injection (`AppDatabase`, `NotificationService`, `LightSensorService`). Screens use `StreamBuilder` with Drift `watch()` methods for reactive UI.
 - **Navigation:** 4-tab `NavigationBar` using `IndexedStack` for tab persistence.
-- **Models:** All have `copyWith()`, `validate()` where applicable, and enum extensions for display names.
-- **First launch:** Uses `SharedPreferences` to detect first launch and create demo data.
+- **First launch:** `SharedPreferences` flag (`demo_data_inserted`) skips demo data after first run.
+- **Notifications:** `flutter_local_notifications` with timezone-aware scheduling. Permissions requested on enable.
 
-### Key Enums
+### Key Enums (in database.dart)
 
-- `OrchidVariety` - 10 orchid types, each with `defaultWateringDays` and `lightNeeds`
-- `BloomStatus` - blooming, budding, spiking, resting, dormant
-- `CareType` - watering, fertilizing, misting, repotting, inspection, rotation, cleaning, custom
-- `CareLogStatus` - completed, skipped, missed, snoozed
-- `LightLevel` - veryLow, low, medium, bright, veryBright, direct
+- `CareType` - water, fertilize, repot, mist, inspect, prune, other
 
-## Dependencies (planned, in Code Files/pubspec.yaml)
+### Database Tables
 
-- **Database:** `isar`, `isar_flutter_libs`, `isar_generator` (dev), `build_runner` (dev)
-- **Notifications:** `flutter_local_notifications`, `permission_handler`
-- **Storage:** `shared_preferences`, `path_provider`
+- `Orchids` - orchid profiles (name, variety, location, photo, notes, dateAcquired, isDemo)
+- `CareTasks` - scheduled care (orchidId, careType, intervalDays, nextDue, enabled, notifyHour/Minute)
+- `CareLogs` - completion history (orchidId, careTaskId, careType, completedAt, notes, skipped)
+- `LightReadings` - lux meter readings (orchidId, locationName, luxValue, readingAt)
+- `Settings` - key-value settings store
+
+## Dependencies
+
+- **Database:** `drift`, `sqlite3_flutter_libs`, `drift_dev` (dev), `build_runner` (dev)
+- **State:** `provider`
+- **Notifications:** `flutter_local_notifications`, `timezone`, `permission_handler`
+- **Storage:** `shared_preferences`, `path_provider`, `path`
 - **Images:** `image_picker`
 - **Sensors:** `sensors_plus` (ambient light for lux meter)
 - **Sharing/AI handoff:** `url_launcher`, `share_plus`
+- **Formatting:** `intl`
 - **Linting:** `flutter_lints`
 
 ## Design Decisions
 
-- **Offline-first:** All data stored locally in Isar, no external APIs.
+- **Offline-first:** All data stored locally in SQLite via Drift, no external APIs.
 - **AI handoff, not AI built-in:** The Tools screen launches external apps (Google Lens, ChatGPT, etc.) with pre-built contextual prompts rather than integrating AI directly.
 - **Warm/encouraging tone:** UI language is friendly, not clinical. This is a consumer plant-care app.
-- **Archiving over deletion:** Orchids have `isActive` flag for soft-delete.
+- **Core library desugaring:** Required for `flutter_local_notifications` on Android. Enabled in `android/app/build.gradle.kts`.
