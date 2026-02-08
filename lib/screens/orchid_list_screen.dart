@@ -1,7 +1,12 @@
+import 'dart:io' show File;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../database/database.dart';
 import '../theme/app_theme.dart';
+import '../widgets/orchid_sliver_app_bar.dart';
+import '../widgets/orchid_card.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/page_transitions.dart';
 import 'orchid_detail_screen.dart';
 import 'add_edit_orchid_screen.dart';
 
@@ -13,237 +18,229 @@ class OrchidListScreen extends StatelessWidget {
     final db = Provider.of<AppDatabase>(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Orchids'),
-      ),
       body: StreamBuilder<List<Orchid>>(
         stream: db.watchAllOrchids(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+        builder: (context, orchidSnapshot) {
+          if (orchidSnapshot.connectionState == ConnectionState.waiting) {
+            return const CustomScrollView(
+              slivers: [
+                OrchidSliverAppBar(title: 'My Orchids'),
+                SliverFillRemaining(
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ],
+            );
           }
 
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+          if (orchidSnapshot.hasError) {
+            return CustomScrollView(
+              slivers: [
+                const OrchidSliverAppBar(title: 'My Orchids'),
+                SliverFillRemaining(
+                  child: Center(child: Text('Error: ${orchidSnapshot.error}')),
+                ),
+              ],
+            );
           }
 
-          final orchids = snapshot.data ?? [];
+          final orchids = orchidSnapshot.data ?? [];
 
           if (orchids.isEmpty) {
-            return _buildEmptyState(context);
+            return CustomScrollView(
+              slivers: [
+                const OrchidSliverAppBar(title: 'My Orchids'),
+                SliverFillRemaining(
+                  child: EmptyState(
+                    icon: Icons.local_florist_outlined,
+                    title: 'No orchids yet',
+                    subtitle: 'Tap the button below to add your first orchid',
+                    action: FilledButton.icon(
+                      onPressed: () => _navigateToAddOrchid(context),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Your First Orchid'),
+                    ),
+                  ),
+                ),
+              ],
+            );
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: orchids.length,
-            itemBuilder: (context, index) {
-              return _buildOrchidCard(context, db, orchids[index]);
+          return StreamBuilder<Map<int, int>>(
+            stream: db.watchDueTaskCountsByOrchid(),
+            builder: (context, countsSnapshot) {
+              final dueCounts = countsSnapshot.data ?? {};
+
+              return CustomScrollView(
+                slivers: [
+                  const OrchidSliverAppBar(title: 'My Orchids'),
+                  SliverPadding(
+                    padding: const EdgeInsets.all(16),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final orchid = orchids[index];
+                          final dueCount = dueCounts[orchid.id] ?? 0;
+                          return _buildOrchidCard(context, orchid, dueCount);
+                        },
+                        childCount: orchids.length,
+                      ),
+                    ),
+                  ),
+                  // Bottom spacing for floating nav
+                  const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
+                ],
+              );
             },
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _navigateToAddOrchid(context),
-        icon: const Icon(Icons.add),
-        label: const Text('Add Orchid'),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: FloatingActionButton.extended(
+          onPressed: () => _navigateToAddOrchid(context),
+          icon: const Icon(Icons.add),
+          label: const Text('Add Orchid'),
+        ),
       ),
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+  Widget _buildOrchidCard(BuildContext context, Orchid orchid, int dueCount) {
+    return OrchidCard(
+      onTap: () => _navigateToDetail(context, orchid),
+      child: Row(
         children: [
-          Icon(
-            Icons.local_florist_outlined,
-            size: 80,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No orchids yet',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[600],
+          // Orchid avatar/photo
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Tap the button below to add your first orchid',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[500],
-            ),
-          ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: () => _navigateToAddOrchid(context),
-            icon: const Icon(Icons.add),
-            label: const Text('Add Your First Orchid'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOrchidCard(BuildContext context, AppDatabase db, Orchid orchid) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: () => _navigateToDetail(context, orchid),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              // Orchid avatar/photo
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: orchid.photoPath != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.asset(
-                          orchid.photoPath!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(
-                            Icons.local_florist,
-                            color: AppTheme.primaryGreen,
-                            size: 32,
-                          ),
-                        ),
-                      )
-                    : const Icon(
+            child: orchid.photoPath != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                    child: Image.file(
+                      File(orchid.photoPath!),
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(
                         Icons.local_florist,
-                        color: AppTheme.primaryGreen,
+                        color: AppTheme.primary,
                         size: 32,
                       ),
-              ),
-              const SizedBox(width: 16),
-              // Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            orchid.name,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        if (orchid.isDemo)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Text(
-                              'Demo',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.orange,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                      ],
                     ),
-                    if (orchid.variety != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        orchid.variety!,
-                        style: TextStyle(
-                          color: Colors.grey[600],
+                  )
+                : const Icon(
+                    Icons.local_florist,
+                    color: AppTheme.primary,
+                    size: 32,
+                  ),
+          ),
+          const SizedBox(width: 16),
+          // Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        orchid.name,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ],
-                    if (orchid.location != null) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.location_on,
-                            size: 14,
-                            color: Colors.grey[500],
+                    ),
+                    if (orchid.isDemo)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accent.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                        ),
+                        child: const Text(
+                          'Demo',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.accent,
+                            fontWeight: FontWeight.w500,
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            orchid.location!,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[500],
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ],
                   ],
                 ),
-              ),
-              // Tasks summary
-              FutureBuilder<List<CareTask>>(
-                future: db.getTasksForOrchid(orchid.id),
-                builder: (context, snapshot) {
-                  final tasks = snapshot.data ?? [];
-                  final dueToday = tasks.where((t) {
-                    final now = DateTime.now();
-                    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
-                    return t.nextDue.isBefore(endOfDay) && t.enabled;
-                  }).length;
-
-                  if (dueToday > 0) {
-                    return Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
+                if (orchid.variety != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    orchid.variety!,
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
+                if (orchid.location != null) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.location_on,
+                        size: 14,
+                        color: AppTheme.textSecondary,
                       ),
-                      child: Column(
-                        children: [
-                          Text(
-                            '$dueToday',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.red,
-                            ),
-                          ),
-                          const Text(
-                            'due',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.red,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(width: 4),
+                      Text(
+                        orchid.location!,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
                       ),
-                    );
-                  }
-
-                  return const Icon(
-                    Icons.chevron_right,
-                    color: Colors.grey,
-                  );
-                },
-              ),
-            ],
+                    ],
+                  ),
+                ],
+              ],
+            ),
           ),
-        ),
+          // Tasks due indicator
+          if (dueCount > 0)
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.statusOverdue.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    '$dueCount',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.statusOverdue,
+                    ),
+                  ),
+                  const Text(
+                    'due',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppTheme.statusOverdue,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            const Icon(
+              Icons.chevron_right,
+              color: AppTheme.textSecondary,
+            ),
+        ],
       ),
     );
   }
@@ -251,7 +248,7 @@ class OrchidListScreen extends StatelessWidget {
   void _navigateToDetail(BuildContext context, Orchid orchid) {
     Navigator.push(
       context,
-      MaterialPageRoute(
+      OrchidPageRoute(
         builder: (context) => OrchidDetailScreen(orchidId: orchid.id),
       ),
     );
@@ -260,7 +257,7 @@ class OrchidListScreen extends StatelessWidget {
   void _navigateToAddOrchid(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(
+      OrchidPageRoute(
         builder: (context) => const AddEditOrchidScreen(),
       ),
     );
