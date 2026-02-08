@@ -1,4 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:drift/drift.dart' show Value;
 import '../database/database.dart';
@@ -24,7 +28,9 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
   late TextEditingController _locationController;
   late TextEditingController _notesController;
   DateTime? _dateAcquired;
+  String? _photoPath;
   bool _addDefaultTasks = true;
+  final _imagePicker = ImagePicker();
 
   // Common orchid varieties for quick selection
   static const _commonVarieties = [
@@ -47,6 +53,7 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
     _locationController = TextEditingController(text: widget.orchid?.location ?? '');
     _notesController = TextEditingController(text: widget.orchid?.notes ?? '');
     _dateAcquired = widget.orchid?.dateAcquired;
+    _photoPath = widget.orchid?.photoPath;
   }
 
   @override
@@ -64,6 +71,10 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
               padding: const EdgeInsets.all(16),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
+                  // Photo
+                  _buildPhotoSection(),
+                  const SizedBox(height: 20),
+
                   // Name
                   TextFormField(
                     controller: _nameController,
@@ -181,8 +192,8 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                   ),
-                  // Bottom spacing for floating nav on pushed screens
-                  const SizedBox(height: 32),
+                  // Bottom spacing for floating nav + system nav bar inset
+                  SizedBox(height: 32 + MediaQuery.of(context).padding.bottom),
                 ]),
               ),
             ),
@@ -190,6 +201,122 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildPhotoSection() {
+    return Center(
+      child: GestureDetector(
+        onTap: _showPhotoOptions,
+        child: Column(
+          children: [
+            Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                border: Border.all(
+                  color: AppTheme.primary.withValues(alpha: 0.3),
+                  width: 2,
+                ),
+              ),
+              child: _photoPath != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMedium - 1),
+                      child: Image.file(
+                        File(_photoPath!),
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _buildPhotoPlaceholder(),
+                      ),
+                    )
+                  : _buildPhotoPlaceholder(),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _photoPath != null ? 'Tap to change photo' : 'Add a photo',
+              style: const TextStyle(
+                color: AppTheme.primary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhotoPlaceholder() {
+    return const Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.add_a_photo, color: AppTheme.primary, size: 40),
+        SizedBox(height: 8),
+        Text(
+          'Tap to add',
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+        ),
+      ],
+    );
+  }
+
+  void _showPhotoOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Take Photo'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Choose from Gallery'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+            if (_photoPath != null)
+              ListTile(
+                leading: const Icon(Icons.delete, color: AppTheme.statusOverdue),
+                title: const Text('Remove Photo',
+                    style: TextStyle(color: AppTheme.statusOverdue)),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() => _photoPath = null);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    final picked = await _imagePicker.pickImage(
+      source: source,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
+    if (picked == null) return;
+
+    // Copy to app documents directory for persistence
+    final appDir = await getApplicationDocumentsDirectory();
+    final photosDir = Directory(p.join(appDir.path, 'orchid_photos'));
+    if (!await photosDir.exists()) {
+      await photosDir.create(recursive: true);
+    }
+    final fileName = 'orchid_${DateTime.now().millisecondsSinceEpoch}${p.extension(picked.path)}';
+    final savedFile = await File(picked.path).copy(p.join(photosDir.path, fileName));
+
+    setState(() => _photoPath = savedFile.path);
   }
 
   Future<void> _selectDate() async {
@@ -215,6 +342,7 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
         name: _nameController.text.trim(),
         variety: Value(_varietyController.text.trim().isEmpty ? null : _varietyController.text.trim()),
         location: Value(_locationController.text.trim().isEmpty ? null : _locationController.text.trim()),
+        photoPath: Value(_photoPath),
         notes: Value(_notesController.text.trim().isEmpty ? null : _notesController.text.trim()),
         dateAcquired: Value(_dateAcquired),
       ));
@@ -231,6 +359,7 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
         name: _nameController.text.trim(),
         variety: Value(_varietyController.text.trim().isEmpty ? null : _varietyController.text.trim()),
         location: Value(_locationController.text.trim().isEmpty ? null : _locationController.text.trim()),
+        photoPath: Value(_photoPath),
         notes: Value(_notesController.text.trim().isEmpty ? null : _notesController.text.trim()),
         dateAcquired: Value(_dateAcquired),
       ));

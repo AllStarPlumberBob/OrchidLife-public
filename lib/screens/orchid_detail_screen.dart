@@ -71,7 +71,7 @@ class OrchidDetailScreen extends StatelessWidget {
                     _buildCareTasksSection(context, db),
                     const SizedBox(height: 16),
                     _buildCareHistorySection(context, db),
-                    const SizedBox(height: 32),
+                    SizedBox(height: 32 + MediaQuery.of(context).padding.bottom),
                   ]),
                 ),
               ),

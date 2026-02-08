@@ -95,7 +95,7 @@ class OrchidListScreen extends StatelessWidget {
         },
       ),
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.only(bottom: 24),
         child: FloatingActionButton.extended(
           onPressed: () => _navigateToAddOrchid(context),
           icon: const Icon(Icons.add),

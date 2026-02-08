@@ -1057,7 +1057,7 @@ class CareGuideScreen extends StatelessWidget {
                   'Repot every 1-2 years or when the medium breaks down. Use fresh orchid bark mix. '
                   'Best done after flowering when new roots are growing.',
                 ),
-                const SizedBox(height: 32),
+                SizedBox(height: 32 + MediaQuery.of(context).padding.bottom),
               ]),
             ),
           ),

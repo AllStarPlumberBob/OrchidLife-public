@@ -202,7 +202,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   // TODO: Open email
                 },
               ),
-              const SizedBox(height: 32),
+              SizedBox(height: 32 + MediaQuery.of(context).padding.bottom),
             ]),
           ),
         ],
