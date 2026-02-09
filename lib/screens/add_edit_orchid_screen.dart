@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:drift/drift.dart' show Value;
 import '../database/database.dart';
 import '../services/notification_service.dart';
@@ -30,6 +31,7 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
   DateTime? _dateAcquired;
   String? _photoPath;
   bool _addDefaultTasks = true;
+  int _soakDuration = 15;
   final _imagePicker = ImagePicker();
 
   // Common orchid varieties for quick selection
@@ -54,6 +56,20 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
     _notesController = TextEditingController(text: widget.orchid?.notes ?? '');
     _dateAcquired = widget.orchid?.dateAcquired;
     _photoPath = widget.orchid?.photoPath;
+    if (widget.isEditing) {
+      _soakDuration = widget.orchid!.soakDurationMinutes;
+    } else {
+      _loadDefaultSoakDuration();
+    }
+  }
+
+  Future<void> _loadDefaultSoakDuration() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _soakDuration = prefs.getInt('default_soak_duration') ?? 15;
+      });
+    }
   }
 
   @override
@@ -168,6 +184,24 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
                     ),
                     maxLines: 3,
                     textCapitalization: TextCapitalization.sentences,
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Soak duration
+                  ListTile(
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppTheme.waterBlue.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                      ),
+                      child: const Icon(Icons.timer, color: AppTheme.waterBlue),
+                    ),
+                    title: const Text('Soak Duration'),
+                    subtitle: Text('$_soakDuration minutes'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _selectSoakDuration,
                   ),
                   const SizedBox(height: 20),
 
@@ -331,6 +365,50 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
     }
   }
 
+  Future<void> _selectSoakDuration() async {
+    final controller = TextEditingController(text: '$_soakDuration');
+
+    final result = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Soak Duration'),
+        content: Row(
+          children: [
+            SizedBox(
+              width: 60,
+              child: TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                autofocus: true,
+              ),
+            ),
+            const Text(' minutes'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = int.tryParse(controller.text);
+              if (value != null && value >= 5 && value <= 60) {
+                Navigator.pop(context, value);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null) {
+      setState(() => _soakDuration = result);
+    }
+  }
+
   Future<void> _saveOrchid() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -345,6 +423,7 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
         photoPath: Value(_photoPath),
         notes: Value(_notesController.text.trim().isEmpty ? null : _notesController.text.trim()),
         dateAcquired: Value(_dateAcquired),
+        soakDurationMinutes: _soakDuration,
       ));
 
       if (mounted) {
@@ -362,6 +441,7 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
         photoPath: Value(_photoPath),
         notes: Value(_notesController.text.trim().isEmpty ? null : _notesController.text.trim()),
         dateAcquired: Value(_dateAcquired),
+        soakDurationMinutes: Value(_soakDuration),
       ));
 
       // Add default care tasks if requested

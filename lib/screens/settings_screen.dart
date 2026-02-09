@@ -19,6 +19,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   TimeOfDay _defaultNotifyTime = const TimeOfDay(hour: 9, minute: 0);
   int _defaultWaterInterval = 7;
   int _defaultFertilizeInterval = 30;
+  int _defaultSoakDuration = 15;
 
   @override
   void initState() {
@@ -37,6 +38,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
       _defaultWaterInterval = prefs.getInt('default_water_interval') ?? 7;
       _defaultFertilizeInterval = prefs.getInt('default_fertilize_interval') ?? 30;
+      _defaultSoakDuration = prefs.getInt('default_soak_duration') ?? 15;
     });
   }
 
@@ -47,6 +49,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setInt('notify_minute', _defaultNotifyTime.minute);
     await prefs.setInt('default_water_interval', _defaultWaterInterval);
     await prefs.setInt('default_fertilize_interval', _defaultFertilizeInterval);
+    await prefs.setInt('default_soak_duration', _defaultSoakDuration);
   }
 
   @override
@@ -123,6 +126,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _selectInterval('water'),
+              ),
+              ListTile(
+                title: const Text('Default Soak Duration'),
+                subtitle: Text('$_defaultSoakDuration minutes'),
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppTheme.waterBlue.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                  ),
+                  child: const Icon(Icons.timer, color: AppTheme.waterBlue),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _selectSoakDuration,
               ),
               ListTile(
                 title: const Text('Fertilizing'),
@@ -287,6 +305,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _defaultFertilizeInterval = result;
         }
       });
+      _saveSettings();
+    }
+  }
+
+  Future<void> _selectSoakDuration() async {
+    final controller = TextEditingController(text: '$_defaultSoakDuration');
+
+    final result = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Default Soak Duration'),
+        content: Row(
+          children: [
+            SizedBox(
+              width: 60,
+              child: TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                autofocus: true,
+              ),
+            ),
+            const Text(' minutes'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = int.tryParse(controller.text);
+              if (value != null && value >= 5 && value <= 60) {
+                Navigator.pop(context, value);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null) {
+      setState(() => _defaultSoakDuration = result);
       _saveSettings();
     }
   }

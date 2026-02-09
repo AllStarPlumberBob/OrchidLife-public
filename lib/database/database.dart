@@ -21,6 +21,7 @@ class Orchids extends Table {
   DateTimeColumn get dateAcquired => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   BoolColumn get isDemo => boolean().withDefault(const Constant(false))();
+  IntColumn get soakDurationMinutes => integer().withDefault(const Constant(15))();
 }
 
 /// Care task types enum stored as text
@@ -70,26 +71,47 @@ class Settings extends Table {
   Set<Column> get primaryKey => {key};
 }
 
+/// Soak session status
+enum SoakStatus { soaking, readyToDrain, completed, cancelled }
+
+/// Active soak sessions (one per duration group)
+class SoakSessions extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  DateTimeColumn get startedAt => dateTime()();
+  IntColumn get durationMinutes => integer().withDefault(const Constant(15))();
+  TextColumn get status => textEnum<SoakStatus>()();
+  DateTimeColumn get completedAt => dateTime().nullable()();
+  IntColumn get notificationId => integer()();
+}
+
+/// Join table: which care tasks belong to which soak session
+class SoakSessionTasks extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get soakSessionId => integer().references(SoakSessions, #id)();
+  IntColumn get careTaskId => integer().references(CareTasks, #id)();
+  IntColumn get orchidId => integer().references(Orchids, #id)();
+}
+
 // ============================================================
 // DATABASE CLASS
 // ============================================================
 
-@DriftDatabase(tables: [Orchids, CareTasks, CareLogs, LightReadings, Settings])
+@DriftDatabase(tables: [Orchids, CareTasks, CareLogs, LightReadings, Settings, SoakSessions, SoakSessionTasks])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) => m.createAll(),
         onUpgrade: (m, from, to) async {
-          // Add migration steps here when schemaVersion is bumped.
-          // Example:
-          // if (from < 2) {
-          //   await m.addColumn(careTasks, careTasks.newColumn);
-          // }
+          if (from < 2) {
+            await m.addColumn(orchids, orchids.soakDurationMinutes);
+            await m.createTable(soakSessions);
+            await m.createTable(soakSessionTasks);
+          }
         },
       );
 
@@ -115,6 +137,7 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> deleteOrchidAndRelated(int id) async {
     await transaction(() async {
+      await (delete(soakSessionTasks)..where((s) => s.orchidId.equals(id))).go();
       await (delete(careLogs)..where((l) => l.orchidId.equals(id))).go();
       await (delete(careTasks)..where((t) => t.orchidId.equals(id))).go();
       await (delete(lightReadings)..where((r) => r.orchidId.equals(id))).go();
@@ -255,6 +278,122 @@ class AppDatabase extends _$AppDatabase {
       into(lightReadings).insert(reading);
 
   // ============================================================
+  // SOAK SESSION OPERATIONS
+  // ============================================================
+
+  /// Watch active soak sessions (soaking or readyToDrain)
+  Stream<List<SoakSession>> watchActiveSoakSessions() {
+    return (select(soakSessions)
+          ..where((s) => s.status.isIn(['soaking', 'readyToDrain']))
+          ..orderBy([(s) => OrderingTerm.asc(s.startedAt)]))
+        .watch();
+  }
+
+  /// Get tasks + orchid info for a soak session
+  Future<List<SoakSessionTaskWithOrchid>> getTasksForSoakSession(int sessionId) async {
+    final query = select(soakSessionTasks).join([
+      innerJoin(orchids, orchids.id.equalsExp(soakSessionTasks.orchidId)),
+      innerJoin(careTasks, careTasks.id.equalsExp(soakSessionTasks.careTaskId)),
+    ])..where(soakSessionTasks.soakSessionId.equals(sessionId));
+
+    final rows = await query.get();
+    return rows.map((row) => SoakSessionTaskWithOrchid(
+      sessionTask: row.readTable(soakSessionTasks),
+      orchid: row.readTable(orchids),
+      careTask: row.readTable(careTasks),
+    )).toList();
+  }
+
+  /// Create a soak session with its associated tasks
+  Future<int> createSoakSession({
+    required List<int> taskIds,
+    required List<int> orchidIds,
+    required int durationMinutes,
+    required int notificationId,
+  }) async {
+    return transaction(() async {
+      final sessionId = await into(soakSessions).insert(SoakSessionsCompanion.insert(
+        startedAt: DateTime.now(),
+        durationMinutes: Value(durationMinutes),
+        status: SoakStatus.soaking,
+        notificationId: notificationId,
+      ));
+
+      for (var i = 0; i < taskIds.length; i++) {
+        await into(soakSessionTasks).insert(SoakSessionTasksCompanion.insert(
+          soakSessionId: sessionId,
+          careTaskId: taskIds[i],
+          orchidId: orchidIds[i],
+        ));
+      }
+
+      return sessionId;
+    });
+  }
+
+  /// Complete a soak session, completing all included tasks
+  Future<void> completeSoakSession(int sessionId, {Set<int>? excludeTaskIds}) async {
+    await transaction(() async {
+      final sessionTasks = await getTasksForSoakSession(sessionId);
+
+      for (final st in sessionTasks) {
+        if (excludeTaskIds != null && excludeTaskIds.contains(st.careTask.id)) continue;
+        await completeTask(st.careTask);
+      }
+
+      await (update(soakSessions)..where((s) => s.id.equals(sessionId))).write(
+        SoakSessionsCompanion(
+          status: const Value(SoakStatus.completed),
+          completedAt: Value(DateTime.now()),
+        ),
+      );
+    });
+  }
+
+  /// Cancel a soak session
+  Future<void> cancelSoakSession(int sessionId) async {
+    await (update(soakSessions)..where((s) => s.id.equals(sessionId))).write(
+      SoakSessionsCompanion(
+        status: const Value(SoakStatus.cancelled),
+        completedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Get set of careTaskIds currently in active soak sessions
+  Future<Set<int>> getActiveSessionTaskIds() async {
+    final activeSessions = await (select(soakSessions)
+          ..where((s) => s.status.isIn(['soaking', 'readyToDrain'])))
+        .get();
+
+    if (activeSessions.isEmpty) return {};
+
+    final sessionIds = activeSessions.map((s) => s.id).toList();
+    final tasks = await (select(soakSessionTasks)
+          ..where((t) => t.soakSessionId.isIn(sessionIds)))
+        .get();
+
+    return tasks.map((t) => t.careTaskId).toSet();
+  }
+
+  /// Mark expired soaking sessions as readyToDrain (startup cleanup)
+  Future<void> markExpiredSessionsReadyToDrain() async {
+    final activeSessions = await (select(soakSessions)
+          ..where((s) => s.status.equals('soaking')))
+        .get();
+
+    final now = DateTime.now();
+    for (final session in activeSessions) {
+      final endTime = session.startedAt.add(Duration(minutes: session.durationMinutes));
+      if (now.isAfter(endTime)) {
+        await (update(soakSessions)..where((s) => s.id.equals(session.id))).write(
+          const SoakSessionsCompanion(status: Value(SoakStatus.readyToDrain)),
+        );
+      }
+    }
+  }
+
+  // ============================================================
   // SETTINGS OPERATIONS
   // ============================================================
 
@@ -348,6 +487,22 @@ class AppDatabase extends _$AppDatabase {
       await deleteOrchidAndRelated(orchid.id);
     }
   }
+}
+
+// ============================================================
+// DATA CLASSES
+// ============================================================
+
+class SoakSessionTaskWithOrchid {
+  final SoakSessionTask sessionTask;
+  final Orchid orchid;
+  final CareTask careTask;
+
+  SoakSessionTaskWithOrchid({
+    required this.sessionTask,
+    required this.orchid,
+    required this.careTask,
+  });
 }
 
 // ============================================================

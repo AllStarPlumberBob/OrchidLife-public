@@ -100,6 +100,53 @@ class NotificationService {
     await _plugin.cancelAll();
   }
 
+  Future<void> scheduleDrainNotification({
+    required int sessionId,
+    required List<int> orchidIds,
+    required DateTime drainAt,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = prefs.getBool('notifications_enabled') ?? true;
+    if (!enabled) return;
+
+    // Resolve orchid names
+    final names = <String>[];
+    for (final id in orchidIds) {
+      final orchid = await _db.getOrchidById(id);
+      if (orchid != null) names.add(orchid.name);
+    }
+    final body = names.isEmpty
+        ? 'Your orchids are ready to be drained'
+        : '${names.join(' and ')} ${names.length == 1 ? 'is' : 'are'} ready to be drained';
+
+    final scheduledDate = tz.TZDateTime.from(drainAt, tz.local);
+    if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) return;
+
+    const androidDetails = AndroidNotificationDetails(
+      'orchidlife_soak',
+      'Soak Reminders',
+      channelDescription: 'Reminders when orchid soaking is complete',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+
+    // Use negative sessionId to avoid collision with positive task IDs
+    await _plugin.zonedSchedule(
+      -sessionId,
+      'Time to drain!',
+      body,
+      scheduledDate,
+      const NotificationDetails(android: androidDetails),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+    );
+  }
+
+  Future<void> cancelDrainNotification(int sessionId) async {
+    await _plugin.cancel(-sessionId);
+  }
+
   Future<void> rescheduleAllTasks() async {
     await _plugin.cancelAll();
     final tasks = await _db.getAllEnabledTasks();

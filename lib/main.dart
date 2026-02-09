@@ -41,6 +41,13 @@ void main() async {
     debugPrint('Notification initialization error: $e');
   }
 
+  // Mark any expired soak sessions as ready to drain (e.g., app was closed mid-soak)
+  try {
+    await database.markExpiredSessionsReadyToDrain();
+  } catch (e) {
+    debugPrint('Soak session cleanup error: $e');
+  }
+
   runApp(
     MultiProvider(
       providers: [
