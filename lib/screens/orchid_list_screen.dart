@@ -86,8 +86,8 @@ class OrchidListScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Bottom spacing for floating nav
-                  const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
+                  // Bottom spacing so last card scrolls above the FAB
+                  const SliverPadding(padding: EdgeInsets.only(bottom: 88)),
                 ],
               );
             },

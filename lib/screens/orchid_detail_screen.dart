@@ -1,3 +1,4 @@
+import 'dart:io' show File;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../widgets/orchid_sliver_app_bar.dart';
 import '../widgets/orchid_card.dart';
 import '../widgets/page_transitions.dart';
+import '../widgets/add_care_task_dialog.dart';
 import 'add_edit_orchid_screen.dart';
 
 class OrchidDetailScreen extends StatelessWidget {
@@ -96,11 +98,26 @@ class OrchidDetailScreen extends StatelessWidget {
                   color: AppTheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                 ),
-                child: const Icon(
-                  Icons.local_florist,
-                  color: AppTheme.primary,
-                  size: 40,
-                ),
+                child: orchid.photoPath != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                        child: Image.file(
+                          File(orchid.photoPath!),
+                          fit: BoxFit.cover,
+                          width: 80,
+                          height: 80,
+                          errorBuilder: (_, __, ___) => const Icon(
+                            Icons.local_florist,
+                            color: AppTheme.primary,
+                            size: 40,
+                          ),
+                        ),
+                      )
+                    : const Icon(
+                        Icons.local_florist,
+                        color: AppTheme.primary,
+                        size: 40,
+                      ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -371,16 +388,18 @@ class OrchidDetailScreen extends StatelessWidget {
 
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (context) => _AddCareTaskDialog(),
+      builder: (context) => const AddCareTaskDialog(),
     );
 
     if (result != null) {
       final now = DateTime.now();
+      final intervalDays = result['intervalDays'] as int;
+      final firstDueDate = result['firstDueDate'] as DateTime?;
       final taskId = await db.insertCareTask(CareTasksCompanion.insert(
         orchidId: orchidId,
         careType: result['careType'] as CareType,
-        intervalDays: result['intervalDays'] as int,
-        nextDue: now.add(Duration(days: result['intervalDays'] as int)),
+        intervalDays: intervalDays,
+        nextDue: firstDueDate ?? now.add(Duration(days: intervalDays)),
         customLabel: Value(result['customLabel'] as String?),
       ));
 
@@ -390,119 +409,3 @@ class OrchidDetailScreen extends StatelessWidget {
   }
 }
 
-class _AddCareTaskDialog extends StatefulWidget {
-  @override
-  State<_AddCareTaskDialog> createState() => _AddCareTaskDialogState();
-}
-
-class _AddCareTaskDialogState extends State<_AddCareTaskDialog> {
-  CareType _selectedType = CareType.water;
-  int _intervalDays = 7;
-  final _customLabelController = TextEditingController();
-  late final TextEditingController _intervalController;
-
-  @override
-  void initState() {
-    super.initState();
-    _intervalController = TextEditingController(text: '$_intervalDays');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-      ),
-      backgroundColor: AppTheme.cardBackground,
-      title: const Text('Add Care Task'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          DropdownButtonFormField<CareType>(
-            initialValue: _selectedType,
-            decoration: const InputDecoration(labelText: 'Care Type'),
-            items: CareType.values.map((type) {
-              return DropdownMenuItem(
-                value: type,
-                child: Row(
-                  children: [
-                    Icon(
-                      AppTheme.getCareTypeIcon(type.name),
-                      color: AppTheme.getCareTypeColor(type.name),
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(AppTheme.getCareTypeDisplayName(type.name)),
-                  ],
-                ),
-              );
-            }).toList(),
-            onChanged: (value) {
-              if (value != null) setState(() => _selectedType = value);
-            },
-          ),
-          const SizedBox(height: 16),
-          if (_selectedType == CareType.other)
-            TextField(
-              controller: _customLabelController,
-              decoration: const InputDecoration(
-                labelText: 'Custom Label',
-                hintText: 'e.g., Check roots',
-              ),
-            ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              const Text('Every '),
-              SizedBox(
-                width: 60,
-                child: TextField(
-                  keyboardType: TextInputType.number,
-                  textAlign: TextAlign.center,
-                  decoration: const InputDecoration(
-                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  ),
-                  controller: _intervalController,
-                  onChanged: (value) {
-                    final parsed = int.tryParse(value);
-                    if (parsed != null && parsed > 0) {
-                      _intervalDays = parsed;
-                    }
-                  },
-                ),
-              ),
-              const Text(' days'),
-            ],
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () {
-            Navigator.pop(context, {
-              'careType': _selectedType,
-              'intervalDays': _intervalDays,
-              'customLabel': _selectedType == CareType.other
-                  ? _customLabelController.text.isEmpty
-                      ? null
-                      : _customLabelController.text
-                  : null,
-            });
-          },
-          child: const Text('Add'),
-        ),
-      ],
-    );
-  }
-
-  @override
-  void dispose() {
-    _customLabelController.dispose();
-    _intervalController.dispose();
-    super.dispose();
-  }
-}

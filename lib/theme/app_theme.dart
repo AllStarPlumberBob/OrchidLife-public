@@ -407,6 +407,14 @@ class AppTheme {
         ),
       ),
 
+      // Dialog — warm cream so inputs (off-white) have visible contrast
+      dialogTheme: DialogThemeData(
+        backgroundColor: background,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusCard),
+        ),
+      ),
+
       // SnackBar
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
@@ -485,6 +493,12 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusMedium),
           ),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: darkBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusCard),
         ),
       ),
       snackBarTheme: SnackBarThemeData(

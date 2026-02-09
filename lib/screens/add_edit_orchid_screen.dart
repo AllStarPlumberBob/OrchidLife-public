@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +11,7 @@ import '../database/database.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/orchid_sliver_app_bar.dart';
+import '../widgets/add_care_task_dialog.dart';
 
 class AddEditOrchidScreen extends StatefulWidget {
   final Orchid? orchid;
@@ -30,7 +32,7 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
   late TextEditingController _notesController;
   DateTime? _dateAcquired;
   String? _photoPath;
-  bool _addDefaultTasks = true;
+  List<Map<String, dynamic>> _pendingCareTasks = [];
   int _soakDuration = 15;
   final _imagePicker = ImagePicker();
 
@@ -60,6 +62,10 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
       _soakDuration = widget.orchid!.soakDurationMinutes;
     } else {
       _loadDefaultSoakDuration();
+      _pendingCareTasks = [
+        {'careType': CareType.water, 'intervalDays': 7, 'customLabel': null, 'firstDueDate': null},
+        {'careType': CareType.fertilize, 'intervalDays': 30, 'customLabel': null, 'firstDueDate': null},
+      ];
     }
   }
 
@@ -205,15 +211,9 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Add default tasks checkbox (only for new orchids)
+                  // Care schedule builder (only for new orchids)
                   if (!widget.isEditing) ...[
-                    SwitchListTile(
-                      title: const Text('Add default care tasks'),
-                      subtitle: const Text('Water (7 days), Fertilize (30 days)'),
-                      value: _addDefaultTasks,
-                      onChanged: (value) => setState(() => _addDefaultTasks = value),
-                      activeTrackColor: AppTheme.primary,
-                    ),
+                    _buildCareScheduleSection(),
                     const SizedBox(height: 20),
                   ],
 
@@ -409,6 +409,81 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
     }
   }
 
+  Widget _buildCareScheduleSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Care Schedule',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            TextButton.icon(
+              onPressed: _addPendingCareTask,
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add Task'),
+            ),
+          ],
+        ),
+        if (_pendingCareTasks.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'No care tasks — tap "Add Task" to set one up',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
+          )
+        else
+          ..._pendingCareTasks.asMap().entries.map((entry) {
+            final index = entry.key;
+            final task = entry.value;
+            final careType = task['careType'] as CareType;
+            final intervalDays = task['intervalDays'] as int;
+            final customLabel = task['customLabel'] as String?;
+            final firstDueDate = task['firstDueDate'] as DateTime?;
+            final displayName = customLabel ?? AppTheme.getCareTypeDisplayName(careType.name);
+            final color = AppTheme.getCareTypeColor(careType.name);
+            final icon = AppTheme.getCareTypeIcon(careType.name);
+
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              title: Text(displayName),
+              subtitle: Text(
+                firstDueDate != null
+                    ? 'Every $intervalDays days · First: ${DateFormat.MMMd().format(firstDueDate)}'
+                    : 'Every $intervalDays days',
+              ),
+              trailing: IconButton(
+                icon: const Icon(Icons.close, size: 20),
+                onPressed: () => setState(() => _pendingCareTasks.removeAt(index)),
+              ),
+            );
+          }),
+      ],
+    );
+  }
+
+  Future<void> _addPendingCareTask() async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => const AddCareTaskDialog(),
+    );
+    if (result != null) {
+      setState(() => _pendingCareTasks.add(result));
+    }
+  }
+
   Future<void> _saveOrchid() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -444,33 +519,25 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
         soakDurationMinutes: Value(_soakDuration),
       ));
 
-      // Add default care tasks if requested
-      if (_addDefaultTasks && mounted) {
+      // Add care tasks from the schedule builder
+      if (_pendingCareTasks.isNotEmpty && mounted) {
         final now = DateTime.now();
         final notif = Provider.of<NotificationService>(context, listen: false);
 
-        // Water every 7 days
-        final waterId = await db.insertCareTask(CareTasksCompanion.insert(
-          orchidId: orchidId,
-          careType: CareType.water,
-          intervalDays: 7,
-          nextDue: now.add(const Duration(days: 7)),
-        ));
-        final waterTask = await db.getCareTaskById(waterId);
-        if (waterTask != null && mounted) {
-          await notif.scheduleTaskNotification(waterTask);
-        }
-
-        // Fertilize every 30 days
-        final fertId = await db.insertCareTask(CareTasksCompanion.insert(
-          orchidId: orchidId,
-          careType: CareType.fertilize,
-          intervalDays: 30,
-          nextDue: now.add(const Duration(days: 30)),
-        ));
-        final fertTask = await db.getCareTaskById(fertId);
-        if (fertTask != null && mounted) {
-          await notif.scheduleTaskNotification(fertTask);
+        for (final task in _pendingCareTasks) {
+          final intervalDays = task['intervalDays'] as int;
+          final firstDueDate = task['firstDueDate'] as DateTime?;
+          final taskId = await db.insertCareTask(CareTasksCompanion.insert(
+            orchidId: orchidId,
+            careType: task['careType'] as CareType,
+            intervalDays: intervalDays,
+            nextDue: firstDueDate ?? now.add(Duration(days: intervalDays)),
+            customLabel: Value(task['customLabel'] as String?),
+          ));
+          final newTask = await db.getCareTaskById(taskId);
+          if (newTask != null && mounted) {
+            await notif.scheduleTaskNotification(newTask);
+          }
         }
       }
 
