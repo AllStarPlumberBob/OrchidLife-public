@@ -562,6 +562,8 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
   final _promptController = TextEditingController(
     text: 'I have an orchid with a problem. Can you identify any health issues and suggest treatment?',
   );
+  final _textDescriptionController = TextEditingController();
+  final _textDescriptionFocusNode = FocusNode();
 
   static const List<String> _problemCategories = [
     'Yellow leaves',
@@ -576,7 +578,32 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
     'Other',
   ];
 
-  bool get _hasSelection => _selectedImage != null || _selectedProblem != null;
+  static const Map<String, String> _problemPrompts = {
+    'Yellow leaves': 'My orchid has yellow leaves. What could be causing this and how should I treat it?',
+    'Brown spots': 'My orchid has brown spots on its leaves. What is causing this and what should I do?',
+    'Root rot': 'I think my orchid has root rot. How do I confirm this and save the plant?',
+    'Wilting': 'My orchid is wilting even though I water it. What could be wrong and how do I fix it?',
+    'Pest damage': 'My orchid appears to have pest damage. How do I identify the pest and treat it?',
+    'Bud drop': 'My orchid keeps dropping its buds before they bloom. What causes this and how do I prevent it?',
+    'Not blooming': 'My orchid hasn\'t bloomed in a long time. How can I encourage it to bloom again?',
+    'Leaf drop': 'My orchid is losing its leaves. What could be causing this and how should I respond?',
+    'Mushy stems': 'My orchid has mushy or soft stems. Is this a sign of disease and what should I do?',
+  };
+
+  bool get _hasSelection =>
+      _selectedImage != null ||
+      _selectedProblem != null ||
+      _textDescriptionController.text.trim().isNotEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    _textDescriptionController.addListener(_onTextDescriptionChanged);
+  }
+
+  void _onTextDescriptionChanged() {
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -590,7 +617,10 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
           SliverFillRemaining(
             hasScrollBody: false,
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.fromLTRB(
+                16, 16, 16,
+                16 + MediaQuery.of(context).padding.bottom,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -606,7 +636,7 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
                           Expanded(
                             child: Text(
                               _isTextMode
-                                  ? 'Select a problem category and search for solutions.'
+                                  ? 'Describe your orchid problem or pick a category, then get AI help.'
                                   : 'Take a photo of your orchid and send it to an AI assistant for diagnosis.',
                               style: const TextStyle(color: AppTheme.primaryDark),
                             ),
@@ -640,6 +670,7 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
                           _selectedImage = null;
                         } else {
                           _selectedProblem = null;
+                          _textDescriptionController.clear();
                         }
                       });
                     },
@@ -783,59 +814,56 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
           style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
         ),
         const SizedBox(height: 12),
-        Expanded(
-          child: GridView.builder(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 2.5,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-            ),
-            itemCount: _problemCategories.length,
-            itemBuilder: (context, index) {
-              final problem = _problemCategories[index];
-              final isSelected = _selectedProblem == problem;
-              return ChoiceChip(
-                label: SizedBox(
-                  width: double.infinity,
-                  child: Text(
-                    problem,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : null,
-                    ),
-                  ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _problemCategories.map((problem) {
+            final isSelected = _selectedProblem == problem;
+            return ChoiceChip(
+              label: Text(
+                problem,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : null,
                 ),
-                selected: isSelected,
-                selectedColor: AppTheme.primary,
-                onSelected: (selected) {
-                  setState(() {
+              ),
+              selected: isSelected,
+              selectedColor: AppTheme.primary,
+              onSelected: (selected) {
+                setState(() {
+                  if (problem == 'Other') {
                     _selectedProblem = selected ? problem : null;
-                  });
-                },
-              );
-            },
+                    _textDescriptionController.clear();
+                    if (selected) {
+                      _textDescriptionFocusNode.requestFocus();
+                    }
+                  } else if (selected) {
+                    _selectedProblem = problem;
+                    _textDescriptionController.text =
+                        _problemPrompts[problem] ?? 'My orchid has $problem.';
+                  } else {
+                    _selectedProblem = null;
+                    _textDescriptionController.clear();
+                  }
+                });
+              },
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: TextField(
+            controller: _textDescriptionController,
+            focusNode: _textDescriptionFocusNode,
+            maxLines: null,
+            expands: true,
+            textAlignVertical: TextAlignVertical.top,
+            decoration: const InputDecoration(
+              hintText: 'Select a category above or type your own description...',
+              border: OutlineInputBorder(),
+              alignLabelWithHint: true,
+            ),
           ),
         ),
-        if (_selectedProblem != null) ...[
-          const SizedBox(height: 12),
-          Card(
-            color: AppTheme.primary.withValues(alpha: 0.08),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: AppTheme.primary),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Selected: $_selectedProblem',
-                    style: const TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -896,9 +924,11 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
   }
 
   Future<void> _searchGoogle() async {
-    final query = Uri.encodeComponent(
-      'orchid ${_selectedProblem ?? 'problem'} treatment how to fix',
-    );
+    final textDescription = _textDescriptionController.text.trim();
+    final searchTerm = textDescription.isNotEmpty
+        ? textDescription
+        : 'orchid ${_selectedProblem ?? 'problem'} treatment how to fix';
+    final query = Uri.encodeComponent(searchTerm);
     final url = Uri.parse('https://www.google.com/search?q=$query');
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
@@ -906,9 +936,12 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
   }
 
   Future<void> _launchVoiceAssistant() async {
-    final query = _selectedProblem != null
-        ? 'How to fix $_selectedProblem on my orchid'
-        : 'Help me with my orchid';
+    final textDescription = _textDescriptionController.text.trim();
+    final query = textDescription.isNotEmpty
+        ? textDescription
+        : _selectedProblem != null
+            ? 'How to fix $_selectedProblem on my orchid'
+            : 'Help me with my orchid';
 
     // Only use Android intent on Android
     if (Platform.isAndroid) {
@@ -976,9 +1009,18 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
   }
 
   void _showFollowUpInstructions(String service) {
-    final message = _isTextMode && _selectedProblem != null
-        ? 'Opening $service... Ask about "$_selectedProblem" on orchids.'
-        : 'Opening $service... Upload your photo and ask your question there.';
+    final textDescription = _textDescriptionController.text.trim();
+    final String message;
+    if (_isTextMode && textDescription.isNotEmpty) {
+      final preview = textDescription.length > 60
+          ? '${textDescription.substring(0, 60)}...'
+          : textDescription;
+      message = 'Opening $service... Ask: "$preview"';
+    } else if (_isTextMode && _selectedProblem != null) {
+      message = 'Opening $service... Ask about "$_selectedProblem" on orchids.';
+    } else {
+      message = 'Opening $service... Upload your photo and ask your question there.';
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -990,6 +1032,9 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
 
   @override
   void dispose() {
+    _textDescriptionController.removeListener(_onTextDescriptionChanged);
+    _textDescriptionController.dispose();
+    _textDescriptionFocusNode.dispose();
     _promptController.dispose();
     super.dispose();
   }
