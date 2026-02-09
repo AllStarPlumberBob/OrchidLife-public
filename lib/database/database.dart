@@ -258,6 +258,35 @@ class AppDatabase extends _$AppDatabase {
   Future<int> insertCareLog(CareLogsCompanion log) =>
       into(careLogs).insert(log);
 
+  /// Watch all care logs from the past N days (across all orchids)
+  Stream<List<CareLog>> watchRecentCareLogs({int days = 14}) {
+    final cutoff = DateTime.now().subtract(Duration(days: days));
+    return (select(careLogs)
+          ..where((l) => l.completedAt.isBiggerOrEqualValue(cutoff))
+          ..orderBy([(l) => OrderingTerm.desc(l.completedAt)]))
+        .watch();
+  }
+
+  /// Watch enabled tasks due within the next N days (excludes today/overdue)
+  Stream<List<CareTask>> watchUpcomingTasks({int days = 14}) {
+    final now = DateTime.now();
+    final endOfToday = DateTime(now.year, now.month, now.day, 23, 59, 59);
+    final futureLimit = endOfToday.add(Duration(days: days));
+    return (select(careTasks)
+          ..where((t) => t.nextDue.isBiggerThanValue(endOfToday))
+          ..where((t) => t.nextDue.isSmallerOrEqualValue(futureLimit))
+          ..where((t) => t.enabled.equals(true))
+          ..orderBy([(t) => OrderingTerm.asc(t.nextDue)]))
+        .watch();
+  }
+
+  /// Watch all orchids as a Map<int, Orchid> for O(1) lookups
+  Stream<Map<int, Orchid>> watchAllOrchidsMap() {
+    return watchAllOrchids().map((list) {
+      return {for (final orchid in list) orchid.id: orchid};
+    });
+  }
+
   // ============================================================
   // LIGHT READING OPERATIONS
   // ============================================================

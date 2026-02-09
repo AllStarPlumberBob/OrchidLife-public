@@ -43,9 +43,9 @@ class FloatingBottomNav extends StatelessWidget {
           onDestinationSelected: onTap,
           destinations: const [
             NavigationDestination(
-              icon: Icon(Icons.today_outlined),
-              selectedIcon: Icon(Icons.today),
-              label: 'Today',
+              icon: Icon(Icons.calendar_month_outlined),
+              selectedIcon: Icon(Icons.calendar_month),
+              label: 'Agenda',
             ),
             NavigationDestination(
               icon: Icon(Icons.local_florist_outlined),

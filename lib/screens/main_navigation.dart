@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/floating_bottom_nav.dart';
-import 'today_screen.dart';
+import 'agenda_screen.dart';
 import 'orchid_list_screen.dart';
 import 'tools_screen.dart';
 import 'settings_screen.dart';
@@ -20,7 +20,7 @@ class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = const [
-    TodayScreen(),
+    AgendaScreen(),
     OrchidListScreen(),
     ToolsScreen(),
     SettingsScreen(),
