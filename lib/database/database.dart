@@ -203,9 +203,6 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(milestones);
             await m.addColumn(orchids, orchids.growingLocationId);
           }
-          if (from < 6) {
-            // Batch 5 — no schema changes, version bump for completeness
-          }
         },
         beforeOpen: (details) async {
           // Seed species profiles on fresh install
@@ -237,7 +234,24 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> deleteOrchidAndRelated(int id) async {
     await transaction(() async {
+      // Find session IDs this orchid participates in before deleting join rows
+      final sessionTaskRows = await (select(soakSessionTasks)
+            ..where((s) => s.orchidId.equals(id)))
+          .get();
+      final affectedSessionIds = sessionTaskRows.map((r) => r.soakSessionId).toSet();
+
       await (delete(soakSessionTasks)..where((s) => s.orchidId.equals(id))).go();
+
+      // Delete any soak sessions that now have zero remaining tasks
+      for (final sessionId in affectedSessionIds) {
+        final remaining = await (select(soakSessionTasks)
+              ..where((s) => s.soakSessionId.equals(sessionId)))
+            .get();
+        if (remaining.isEmpty) {
+          await (delete(soakSessions)..where((s) => s.id.equals(sessionId))).go();
+        }
+      }
+
       await (delete(careLogs)..where((l) => l.orchidId.equals(id))).go();
       await (delete(careTasks)..where((t) => t.orchidId.equals(id))).go();
       await (delete(lightReadings)..where((r) => r.orchidId.equals(id))).go();
@@ -765,7 +779,11 @@ class AppDatabase extends _$AppDatabase {
     ];
 
     for (final profile in profiles) {
-      await into(speciesProfiles).insert(profile);
+      try {
+        await into(speciesProfiles).insert(profile);
+      } catch (e) {
+        // Continue seeding remaining species if one fails
+      }
     }
   }
 }

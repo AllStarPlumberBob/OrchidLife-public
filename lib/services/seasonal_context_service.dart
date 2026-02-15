@@ -1,5 +1,29 @@
 /// Returns seasonal care tips based on species genus and current month.
+/// Detects hemisphere from device timezone offset — positive offsets east of
+/// Greenwich correlate with Africa/Asia/Oceania (where southern latitudes are
+/// common), but timezone alone can't determine latitude. We use a simple
+/// heuristic: if the device's timezone name contains a known southern-hemisphere
+/// region, we flip the seasons. Otherwise we default to northern hemisphere.
 class SeasonalContextService {
+  static bool? _isSouthernHemisphere;
+
+  /// Detect southern hemisphere from timezone name heuristic.
+  static bool _detectSouthernHemisphere() {
+    if (_isSouthernHemisphere != null) return _isSouthernHemisphere!;
+    final tz = DateTime.now().timeZoneName;
+    // Common southern-hemisphere timezone abbreviations / regions
+    const southernIndicators = [
+      'AEST', 'AEDT', 'ACST', 'ACDT', 'AWST', // Australia
+      'NZST', 'NZDT', // New Zealand
+      'BRT', 'BRST', // Brazil
+      'ART', // Argentina
+      'SAST', // South Africa
+      'CLT', 'CLST', // Chile
+    ];
+    _isSouthernHemisphere = southernIndicators.any((s) => tz.contains(s));
+    return _isSouthernHemisphere!;
+  }
+
   /// Get seasonal tips for a genus at the current time
   static List<String> getTips(String genus) {
     final month = DateTime.now().month;
@@ -79,14 +103,32 @@ class SeasonalContextService {
   }
 
   static String _getSeason(int month) {
-    if (month >= 3 && month <= 5) return 'spring';
-    if (month >= 6 && month <= 8) return 'summer';
-    if (month >= 9 && month <= 11) return 'fall';
-    return 'winter';
+    // Northern hemisphere default
+    String season;
+    if (month >= 3 && month <= 5) {
+      season = 'spring';
+    } else if (month >= 6 && month <= 8) {
+      season = 'summer';
+    } else if (month >= 9 && month <= 11) {
+      season = 'fall';
+    } else {
+      season = 'winter';
+    }
+
+    // Flip seasons for southern hemisphere
+    if (_detectSouthernHemisphere()) {
+      switch (season) {
+        case 'spring': season = 'fall'; break;
+        case 'summer': season = 'winter'; break;
+        case 'fall': season = 'spring'; break;
+        case 'winter': season = 'summer'; break;
+      }
+    }
+    return season;
   }
 
   static String getSeasonName() {
-    return _getSeason(DateTime.now().month).substring(0, 1).toUpperCase() +
-        _getSeason(DateTime.now().month).substring(1);
+    final season = _getSeason(DateTime.now().month);
+    return season.substring(0, 1).toUpperCase() + season.substring(1);
   }
 }

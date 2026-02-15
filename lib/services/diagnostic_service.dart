@@ -44,13 +44,14 @@ class DiagnosticService {
         .where((l) => l.careType == CareType.water && !l.skipped)
         .toList();
 
-    if (waterLogs.length < 3) return;
+    if (waterLogs.length < 4) return; // Need at least 3 intervals for meaningful variance
 
-    // Calculate intervals between waterings
+    // Calculate intervals between waterings (logs are newest-first)
     final intervals = <int>[];
     for (var i = 0; i < waterLogs.length - 1; i++) {
-      intervals.add(waterLogs[i].completedAt.difference(waterLogs[i + 1].completedAt).inDays);
+      intervals.add(waterLogs[i].completedAt.difference(waterLogs[i + 1].completedAt).inDays.abs());
     }
+    if (intervals.isEmpty) return;
 
     final avg = intervals.reduce((a, b) => a + b) / intervals.length;
     final variance = intervals.map((i) => (i - avg) * (i - avg)).reduce((a, b) => a + b) / intervals.length;
@@ -136,7 +137,7 @@ class DiagnosticService {
     final newest = logs.first.completedAt;
     final daySpan = newest.difference(oldest).inDays;
 
-    if (daySpan > 0) {
+    if (daySpan >= 1) {
       final actionsPerWeek = (logs.length / daySpan) * 7;
       if (actionsPerWeek > 10) {
         insights.add(const CareInsight(

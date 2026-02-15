@@ -22,7 +22,12 @@ class MilestoneService {
   Future<void> _checkAnniversary(Orchid orchid, DateTime now) async {
     if (orchid.dateAcquired == null) return;
 
-    final years = now.difference(orchid.dateAcquired!).inDays ~/ 365;
+    var years = now.year - orchid.dateAcquired!.year;
+    final acquired = orchid.dateAcquired!;
+    if (now.month < acquired.month ||
+        (now.month == acquired.month && now.day < acquired.day)) {
+      years--;
+    }
     if (years < 1) return;
 
     // Check if we already have this anniversary milestone

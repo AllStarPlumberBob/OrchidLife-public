@@ -1,10 +1,9 @@
-import 'dart:io' show File;
+import 'dart:io' show Directory, File;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:drift/drift.dart' show Value;
-import 'dart:io' show Directory;
 import '../database/database.dart';
 import '../theme/app_theme.dart';
 import '../screens/photo_journal_screen.dart';
@@ -170,13 +169,24 @@ class PhotoJournalSection extends StatelessWidget {
     if (picked == null || !context.mounted) return;
 
     // Copy to app storage
-    final appDir = await getApplicationDocumentsDirectory();
-    final photosDir = Directory(p.join(appDir.path, 'orchid_photos'));
-    if (!await photosDir.exists()) {
-      await photosDir.create(recursive: true);
+    final String savedPath;
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final photosDir = Directory(p.join(appDir.path, 'orchid_photos'));
+      if (!await photosDir.exists()) {
+        await photosDir.create(recursive: true);
+      }
+      final fileName = 'journal_${DateTime.now().millisecondsSinceEpoch}${p.extension(picked.path)}';
+      final savedFile = await File(picked.path).copy(p.join(photosDir.path, fileName));
+      savedPath = savedFile.path;
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not save photo')),
+        );
+      }
+      return;
     }
-    final fileName = 'journal_${DateTime.now().millisecondsSinceEpoch}${p.extension(picked.path)}';
-    final savedFile = await File(picked.path).copy(p.join(photosDir.path, fileName));
 
     if (!context.mounted) return;
 
@@ -186,10 +196,10 @@ class PhotoJournalSection extends StatelessWidget {
       builder: (context) => _PhotoTagDialog(),
     );
 
-    if (result != null) {
+    if (result != null && context.mounted) {
       await db.insertPhotoJournalEntry(PhotoJournalCompanion.insert(
         orchidId: orchidId,
-        photoPath: savedFile.path,
+        photoPath: savedPath,
         dateTaken: DateTime.now(),
         note: Value(result.note),
         tag: result.tag,

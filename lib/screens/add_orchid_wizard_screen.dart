@@ -305,6 +305,7 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
     final fileName = 'orchid_${DateTime.now().millisecondsSinceEpoch}${p.extension(picked.path)}';
     final savedFile = await File(picked.path).copy(p.join(photosDir.path, fileName));
 
+    if (!mounted) return;
     setState(() => _photoPath = savedFile.path);
   }
 

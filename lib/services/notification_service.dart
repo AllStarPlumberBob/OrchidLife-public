@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -80,16 +81,20 @@ class NotificationService {
       priority: Priority.high,
     );
 
-    await _plugin.zonedSchedule(
-      task.id,
-      'Time to ${displayName.toLowerCase()}',
-      '$orchidName needs $gerund',
-      scheduledDate,
-      const NotificationDetails(android: androidDetails),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-    );
+    try {
+      await _plugin.zonedSchedule(
+        task.id,
+        'Time to ${displayName.toLowerCase()}',
+        '$orchidName needs $gerund',
+        scheduledDate,
+        const NotificationDetails(android: androidDetails),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    } catch (e) {
+      debugPrint('Failed to schedule task notification ${task.id}: $e');
+    }
   }
 
   Future<void> cancelTaskNotification(int taskId) async {
@@ -131,16 +136,20 @@ class NotificationService {
     );
 
     // Use negative sessionId to avoid collision with positive task IDs
-    await _plugin.zonedSchedule(
-      -sessionId,
-      'Time to drain!',
-      body,
-      scheduledDate,
-      const NotificationDetails(android: androidDetails),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-    );
+    try {
+      await _plugin.zonedSchedule(
+        -sessionId,
+        'Time to drain!',
+        body,
+        scheduledDate,
+        const NotificationDetails(android: androidDetails),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    } catch (e) {
+      debugPrint('Failed to schedule drain notification for session $sessionId: $e');
+    }
   }
 
   Future<void> cancelDrainNotification(int sessionId) async {
@@ -148,7 +157,11 @@ class NotificationService {
   }
 
   Future<void> rescheduleAllTasks() async {
-    await _plugin.cancelAll();
+    try {
+      await _plugin.cancelAll();
+    } catch (e) {
+      debugPrint('Failed to cancel existing notifications: $e');
+    }
     final tasks = await _db.getAllEnabledTasks();
     for (final task in tasks) {
       await scheduleTaskNotification(task);

@@ -435,6 +435,7 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
     final fileName = 'orchid_${DateTime.now().millisecondsSinceEpoch}${p.extension(picked.path)}';
     final savedFile = await File(picked.path).copy(p.join(photosDir.path, fileName));
 
+    if (!mounted) return;
     setState(() => _photoPath = savedFile.path);
   }
 
