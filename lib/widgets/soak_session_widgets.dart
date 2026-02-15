@@ -1,6 +1,10 @@
 import 'dart:async';
+import 'dart:io' show File, Directory;
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import '../database/database.dart';
 import '../services/notification_service.dart';
@@ -573,7 +577,65 @@ Future<void> completeTaskWorkflow(
           backgroundColor: AppTheme.primary,
         ),
       );
+
+      // Prompt for root check photo after repotting
+      if (task.careType == CareType.repot && context.mounted) {
+        _promptRootCheckPhoto(context, db, task.orchidId);
+      }
     }
+  }
+}
+
+/// Prompt user to take a root check photo after repotting
+Future<void> _promptRootCheckPhoto(BuildContext context, AppDatabase db, int orchidId) async {
+  final takePhoto = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Root Check Photo?'),
+      content: const Text('Would you like to take a root check photo for your journal? This helps track root health over time.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Skip')),
+        FilledButton.icon(
+          onPressed: () => Navigator.pop(context, true),
+          icon: const Icon(Icons.camera_alt),
+          label: const Text('Take Photo'),
+        ),
+      ],
+    ),
+  );
+
+  if (takePhoto != true || !context.mounted) return;
+
+  final picker = ImagePicker();
+  final picked = await picker.pickImage(
+    source: ImageSource.camera,
+    maxWidth: 1024,
+    maxHeight: 1024,
+    imageQuality: 85,
+  );
+  if (picked == null) return;
+
+  final appDir = await getApplicationDocumentsDirectory();
+  final photosDir = Directory(p.join(appDir.path, 'orchid_photos'));
+  if (!await photosDir.exists()) await photosDir.create(recursive: true);
+  final fileName = 'roots_${DateTime.now().millisecondsSinceEpoch}${p.extension(picked.path)}';
+  final savedFile = await File(picked.path).copy(p.join(photosDir.path, fileName));
+
+  await db.insertPhotoJournalEntry(PhotoJournalCompanion.insert(
+    orchidId: orchidId,
+    photoPath: savedFile.path,
+    dateTaken: DateTime.now(),
+    note: const Value('Root check during repotting'),
+    tag: PhotoTag.rootCheck,
+  ));
+
+  if (context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Root check photo saved to journal!'),
+        backgroundColor: AppTheme.statusCompleted,
+      ),
+    );
   }
 }
 

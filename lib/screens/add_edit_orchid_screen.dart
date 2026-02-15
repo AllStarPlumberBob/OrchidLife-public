@@ -31,7 +31,12 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
   late TextEditingController _locationController;
   late TextEditingController _notesController;
   DateTime? _dateAcquired;
+  DateTime? _lastPotted;
   String? _photoPath;
+  bool _isRescue = false;
+  BloomStage? _initialBloomStage;
+  int? _speciesProfileId;
+  List<SpeciesProfile> _speciesProfiles = [];
   List<Map<String, dynamic>> _pendingCareTasks = [];
   int _soakDuration = 15;
   final _imagePicker = ImagePicker();
@@ -57,7 +62,11 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
     _locationController = TextEditingController(text: widget.orchid?.location ?? '');
     _notesController = TextEditingController(text: widget.orchid?.notes ?? '');
     _dateAcquired = widget.orchid?.dateAcquired;
+    _lastPotted = widget.orchid?.lastPotted;
     _photoPath = widget.orchid?.photoPath;
+    _isRescue = widget.orchid?.isRescue ?? false;
+    _initialBloomStage = widget.orchid?.currentBloomStage;
+    _speciesProfileId = widget.orchid?.speciesProfileId;
     if (widget.isEditing) {
       _soakDuration = widget.orchid!.soakDurationMinutes;
     } else {
@@ -66,6 +75,15 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
         {'careType': CareType.water, 'intervalDays': 7, 'customLabel': null, 'firstDueDate': null},
         {'careType': CareType.fertilize, 'intervalDays': 30, 'customLabel': null, 'firstDueDate': null},
       ];
+    }
+    _loadSpeciesProfiles();
+  }
+
+  Future<void> _loadSpeciesProfiles() async {
+    final db = Provider.of<AppDatabase>(context, listen: false);
+    final profiles = await db.getAllSpeciesProfiles();
+    if (mounted) {
+      setState(() => _speciesProfiles = profiles);
     }
   }
 
@@ -160,6 +178,40 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
                   ),
                   const SizedBox(height: 20),
 
+                  // Species profile picker
+                  if (_speciesProfiles.isNotEmpty) ...[
+                    DropdownButtonFormField<int?>(
+                      initialValue: _speciesProfileId,
+                      decoration: const InputDecoration(
+                        labelText: 'Species Profile',
+                        prefixIcon: Icon(Icons.eco),
+                        hintText: 'Link to a species for care tips',
+                      ),
+                      items: [
+                        const DropdownMenuItem<int?>(
+                          value: null,
+                          child: Text('None selected'),
+                        ),
+                        ..._speciesProfiles.map((sp) => DropdownMenuItem<int?>(
+                          value: sp.id,
+                          child: Text('${sp.commonName} (${sp.genus})'),
+                        )),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          _speciesProfileId = value;
+                          if (value != null) {
+                            final species = _speciesProfiles.firstWhere((s) => s.id == value);
+                            if (_varietyController.text.isEmpty) {
+                              _varietyController.text = species.genus;
+                            }
+                          }
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+
                   // Date acquired
                   ListTile(
                     leading: const Icon(Icons.calendar_today),
@@ -176,6 +228,39 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
                           )
                         : null,
                     onTap: _selectDate,
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Last potted date
+                  ListTile(
+                    leading: const Icon(Icons.yard, color: AppTheme.repotBrown),
+                    title: const Text('Last Potted'),
+                    subtitle: Text(
+                      _lastPotted != null
+                          ? '${_lastPotted!.month}/${_lastPotted!.day}/${_lastPotted!.year}'
+                          : 'Not set',
+                    ),
+                    trailing: _lastPotted != null
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () => setState(() => _lastPotted = null),
+                          )
+                        : null,
+                    onTap: _selectLastPotted,
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Rescue orchid toggle
+                  SwitchListTile(
+                    secondary: Icon(
+                      Icons.healing,
+                      color: _isRescue ? AppTheme.statusOverdue : AppTheme.textSecondary,
+                    ),
+                    title: const Text('Rescue Orchid'),
+                    subtitle: const Text('This orchid needs extra TLC'),
+                    value: _isRescue,
+                    onChanged: (value) => setState(() => _isRescue = value),
+                    activeTrackColor: AppTheme.statusOverdue,
                   ),
                   const SizedBox(height: 20),
 
@@ -365,6 +450,18 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
     }
   }
 
+  Future<void> _selectLastPotted() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _lastPotted ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() => _lastPotted = picked);
+    }
+  }
+
   Future<void> _selectSoakDuration() async {
     final controller = TextEditingController(text: '$_soakDuration');
 
@@ -499,6 +596,10 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
         notes: Value(_notesController.text.trim().isEmpty ? null : _notesController.text.trim()),
         dateAcquired: Value(_dateAcquired),
         soakDurationMinutes: _soakDuration,
+        lastPotted: Value(_lastPotted),
+        isRescue: _isRescue,
+        currentBloomStage: Value(_initialBloomStage),
+        speciesProfileId: Value(_speciesProfileId),
       ));
 
       if (mounted) {
@@ -517,6 +618,10 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
         notes: Value(_notesController.text.trim().isEmpty ? null : _notesController.text.trim()),
         dateAcquired: Value(_dateAcquired),
         soakDurationMinutes: Value(_soakDuration),
+        lastPotted: Value(_lastPotted),
+        isRescue: Value(_isRescue),
+        currentBloomStage: Value(_initialBloomStage),
+        speciesProfileId: Value(_speciesProfileId),
       ));
 
       // Add care tasks from the schedule builder

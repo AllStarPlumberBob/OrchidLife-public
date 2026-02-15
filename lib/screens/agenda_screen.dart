@@ -5,7 +5,9 @@ import '../database/database.dart';
 import '../theme/app_theme.dart';
 import '../widgets/orchid_sliver_app_bar.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/page_transitions.dart';
 import '../widgets/soak_session_widgets.dart';
+import 'orchid_detail_screen.dart';
 
 class AgendaScreen extends StatefulWidget {
   const AgendaScreen({super.key});
@@ -189,6 +191,29 @@ class _AgendaScreenState extends State<AgendaScreen> {
       return CustomScrollView(slivers: slivers);
     }
 
+    // ── Milestone banners ──
+    slivers.add(
+      SliverToBoxAdapter(
+        child: StreamBuilder<List<Milestone>>(
+          stream: db.watchUndismissedMilestones(),
+          builder: (context, milestoneSnap) {
+            final milestones = milestoneSnap.data ?? [];
+            if (milestones.isEmpty) return const SizedBox.shrink();
+
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Column(
+                children: milestones.take(3).map((m) => _MilestoneBanner(
+                  milestone: m,
+                  db: db,
+                )).toList(),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
     // ── Past day sections ──
     for (final day in sortedPastDays) {
       final logs = pastDays[day]!;
@@ -310,6 +335,13 @@ class _AgendaScreenState extends State<AgendaScreen> {
         ),
       );
     }
+
+    // ── Health check-in prompts ──
+    slivers.add(
+      SliverToBoxAdapter(
+        child: _HealthCheckInSection(orchidMap: orchidMap, recentLogs: recentLogs),
+      ),
+    );
 
     // ── Future day sections ──
     for (final day in sortedFutureDays) {
@@ -660,6 +692,146 @@ class _PastLogTile extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// Milestone banner (dismissable)
+// ============================================================
+
+class _MilestoneBanner extends StatelessWidget {
+  final Milestone milestone;
+  final AppDatabase db;
+
+  const _MilestoneBanner({required this.milestone, required this.db});
+
+  @override
+  Widget build(BuildContext context) {
+    final isBlooom = milestone.type.startsWith('bloom');
+    final isAnniversary = milestone.type.startsWith('anniversary');
+    final color = isBlooom
+        ? AppTheme.bloom
+        : isAnniversary
+            ? AppTheme.statusNeedsCare
+            : AppTheme.statusCompleted;
+    final icon = isBlooom
+        ? Icons.local_florist
+        : isAnniversary
+            ? Icons.celebration
+            : Icons.emoji_events;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      color: color.withValues(alpha: 0.08),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                milestone.message,
+                style: TextStyle(color: color, fontWeight: FontWeight.w500, fontSize: 13),
+              ),
+            ),
+            IconButton(
+              icon: Icon(Icons.close, size: 18, color: color.withValues(alpha: 0.6)),
+              onPressed: () => db.dismissMilestone(milestone.id),
+              tooltip: 'Dismiss',
+              visualDensity: VisualDensity.compact,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// Health check-in prompts
+// ============================================================
+
+class _HealthCheckInSection extends StatelessWidget {
+  final Map<int, Orchid> orchidMap;
+  final List<CareLog> recentLogs;
+
+  const _HealthCheckInSection({
+    required this.orchidMap,
+    required this.recentLogs,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Find orchids with no care activity in the past 7 days
+    final now = DateTime.now();
+    final sevenDaysAgo = now.subtract(const Duration(days: 7));
+    final recentOrchidIds = recentLogs
+        .where((l) => l.completedAt.isAfter(sevenDaysAgo))
+        .map((l) => l.orchidId)
+        .toSet();
+
+    final neglectedOrchids = orchidMap.values
+        .where((o) => !o.isDemo && !recentOrchidIds.contains(o.id))
+        .take(3)
+        .toList();
+
+    if (neglectedOrchids.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(left: 4, bottom: 8),
+            child: Row(
+              children: [
+                Icon(Icons.favorite_border, size: 16, color: AppTheme.bloom),
+                SizedBox(width: 6),
+                Text(
+                  'Check in',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.bloom,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ...neglectedOrchids.map((orchid) => Card(
+            margin: const EdgeInsets.only(bottom: 6),
+            color: AppTheme.bloom.withValues(alpha: 0.06),
+            child: ListTile(
+              dense: true,
+              onTap: () => Navigator.push(
+                context,
+                OrchidPageRoute(builder: (_) => OrchidDetailScreen(orchidId: orchid.id)),
+              ),
+              leading: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppTheme.bloom.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                ),
+                child: const Icon(Icons.local_florist, color: AppTheme.bloom, size: 20),
+              ),
+              title: Text(
+                'How is ${orchid.name} doing?',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              ),
+              subtitle: const Text(
+                'No recent care logged',
+                style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+              ),
+              trailing: const Icon(Icons.chevron_right, size: 18, color: AppTheme.textSecondary),
+            ),
+          )),
+        ],
       ),
     );
   }

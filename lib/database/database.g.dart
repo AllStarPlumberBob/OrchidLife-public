@@ -83,6 +83,43 @@ class $OrchidsTable extends Orchids with TableInfo<$OrchidsTable, Orchid> {
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(15));
+  static const VerificationMeta _currentBloomStageMeta =
+      const VerificationMeta('currentBloomStage');
+  @override
+  late final GeneratedColumnWithTypeConverter<BloomStage?, String>
+      currentBloomStage = GeneratedColumn<String>(
+              'current_bloom_stage', aliasedName, true,
+              type: DriftSqlType.string, requiredDuringInsert: false)
+          .withConverter<BloomStage?>(
+              $OrchidsTable.$convertercurrentBloomStagen);
+  static const VerificationMeta _lastPottedMeta =
+      const VerificationMeta('lastPotted');
+  @override
+  late final GeneratedColumn<DateTime> lastPotted = GeneratedColumn<DateTime>(
+      'last_potted', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _isRescueMeta =
+      const VerificationMeta('isRescue');
+  @override
+  late final GeneratedColumn<bool> isRescue = GeneratedColumn<bool>(
+      'is_rescue', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_rescue" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _speciesProfileIdMeta =
+      const VerificationMeta('speciesProfileId');
+  @override
+  late final GeneratedColumn<int> speciesProfileId = GeneratedColumn<int>(
+      'species_profile_id', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _growingLocationIdMeta =
+      const VerificationMeta('growingLocationId');
+  @override
+  late final GeneratedColumn<int> growingLocationId = GeneratedColumn<int>(
+      'growing_location_id', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -94,7 +131,12 @@ class $OrchidsTable extends Orchids with TableInfo<$OrchidsTable, Orchid> {
         dateAcquired,
         createdAt,
         isDemo,
-        soakDurationMinutes
+        soakDurationMinutes,
+        currentBloomStage,
+        lastPotted,
+        isRescue,
+        speciesProfileId,
+        growingLocationId
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -151,6 +193,29 @@ class $OrchidsTable extends Orchids with TableInfo<$OrchidsTable, Orchid> {
           soakDurationMinutes.isAcceptableOrUnknown(
               data['soak_duration_minutes']!, _soakDurationMinutesMeta));
     }
+    context.handle(_currentBloomStageMeta, const VerificationResult.success());
+    if (data.containsKey('last_potted')) {
+      context.handle(
+          _lastPottedMeta,
+          lastPotted.isAcceptableOrUnknown(
+              data['last_potted']!, _lastPottedMeta));
+    }
+    if (data.containsKey('is_rescue')) {
+      context.handle(_isRescueMeta,
+          isRescue.isAcceptableOrUnknown(data['is_rescue']!, _isRescueMeta));
+    }
+    if (data.containsKey('species_profile_id')) {
+      context.handle(
+          _speciesProfileIdMeta,
+          speciesProfileId.isAcceptableOrUnknown(
+              data['species_profile_id']!, _speciesProfileIdMeta));
+    }
+    if (data.containsKey('growing_location_id')) {
+      context.handle(
+          _growingLocationIdMeta,
+          growingLocationId.isAcceptableOrUnknown(
+              data['growing_location_id']!, _growingLocationIdMeta));
+    }
     return context;
   }
 
@@ -180,6 +245,17 @@ class $OrchidsTable extends Orchids with TableInfo<$OrchidsTable, Orchid> {
           .read(DriftSqlType.bool, data['${effectivePrefix}is_demo'])!,
       soakDurationMinutes: attachedDatabase.typeMapping.read(
           DriftSqlType.int, data['${effectivePrefix}soak_duration_minutes'])!,
+      currentBloomStage: $OrchidsTable.$convertercurrentBloomStagen.fromSql(
+          attachedDatabase.typeMapping.read(DriftSqlType.string,
+              data['${effectivePrefix}current_bloom_stage'])),
+      lastPotted: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}last_potted']),
+      isRescue: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_rescue'])!,
+      speciesProfileId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}species_profile_id']),
+      growingLocationId: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}growing_location_id']),
     );
   }
 
@@ -187,6 +263,13 @@ class $OrchidsTable extends Orchids with TableInfo<$OrchidsTable, Orchid> {
   $OrchidsTable createAlias(String alias) {
     return $OrchidsTable(attachedDatabase, alias);
   }
+
+  static JsonTypeConverter2<BloomStage, String, String>
+      $convertercurrentBloomStage =
+      const EnumNameConverter<BloomStage>(BloomStage.values);
+  static JsonTypeConverter2<BloomStage?, String?, String?>
+      $convertercurrentBloomStagen =
+      JsonTypeConverter2.asNullable($convertercurrentBloomStage);
 }
 
 class Orchid extends DataClass implements Insertable<Orchid> {
@@ -200,6 +283,11 @@ class Orchid extends DataClass implements Insertable<Orchid> {
   final DateTime createdAt;
   final bool isDemo;
   final int soakDurationMinutes;
+  final BloomStage? currentBloomStage;
+  final DateTime? lastPotted;
+  final bool isRescue;
+  final int? speciesProfileId;
+  final int? growingLocationId;
   const Orchid(
       {required this.id,
       required this.name,
@@ -210,7 +298,12 @@ class Orchid extends DataClass implements Insertable<Orchid> {
       this.dateAcquired,
       required this.createdAt,
       required this.isDemo,
-      required this.soakDurationMinutes});
+      required this.soakDurationMinutes,
+      this.currentBloomStage,
+      this.lastPotted,
+      required this.isRescue,
+      this.speciesProfileId,
+      this.growingLocationId});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -234,6 +327,20 @@ class Orchid extends DataClass implements Insertable<Orchid> {
     map['created_at'] = Variable<DateTime>(createdAt);
     map['is_demo'] = Variable<bool>(isDemo);
     map['soak_duration_minutes'] = Variable<int>(soakDurationMinutes);
+    if (!nullToAbsent || currentBloomStage != null) {
+      map['current_bloom_stage'] = Variable<String>(
+          $OrchidsTable.$convertercurrentBloomStagen.toSql(currentBloomStage));
+    }
+    if (!nullToAbsent || lastPotted != null) {
+      map['last_potted'] = Variable<DateTime>(lastPotted);
+    }
+    map['is_rescue'] = Variable<bool>(isRescue);
+    if (!nullToAbsent || speciesProfileId != null) {
+      map['species_profile_id'] = Variable<int>(speciesProfileId);
+    }
+    if (!nullToAbsent || growingLocationId != null) {
+      map['growing_location_id'] = Variable<int>(growingLocationId);
+    }
     return map;
   }
 
@@ -258,6 +365,19 @@ class Orchid extends DataClass implements Insertable<Orchid> {
       createdAt: Value(createdAt),
       isDemo: Value(isDemo),
       soakDurationMinutes: Value(soakDurationMinutes),
+      currentBloomStage: currentBloomStage == null && nullToAbsent
+          ? const Value.absent()
+          : Value(currentBloomStage),
+      lastPotted: lastPotted == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastPotted),
+      isRescue: Value(isRescue),
+      speciesProfileId: speciesProfileId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(speciesProfileId),
+      growingLocationId: growingLocationId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(growingLocationId),
     );
   }
 
@@ -276,6 +396,12 @@ class Orchid extends DataClass implements Insertable<Orchid> {
       isDemo: serializer.fromJson<bool>(json['isDemo']),
       soakDurationMinutes:
           serializer.fromJson<int>(json['soakDurationMinutes']),
+      currentBloomStage: $OrchidsTable.$convertercurrentBloomStagen
+          .fromJson(serializer.fromJson<String?>(json['currentBloomStage'])),
+      lastPotted: serializer.fromJson<DateTime?>(json['lastPotted']),
+      isRescue: serializer.fromJson<bool>(json['isRescue']),
+      speciesProfileId: serializer.fromJson<int?>(json['speciesProfileId']),
+      growingLocationId: serializer.fromJson<int?>(json['growingLocationId']),
     );
   }
   @override
@@ -292,6 +418,12 @@ class Orchid extends DataClass implements Insertable<Orchid> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'isDemo': serializer.toJson<bool>(isDemo),
       'soakDurationMinutes': serializer.toJson<int>(soakDurationMinutes),
+      'currentBloomStage': serializer.toJson<String?>(
+          $OrchidsTable.$convertercurrentBloomStagen.toJson(currentBloomStage)),
+      'lastPotted': serializer.toJson<DateTime?>(lastPotted),
+      'isRescue': serializer.toJson<bool>(isRescue),
+      'speciesProfileId': serializer.toJson<int?>(speciesProfileId),
+      'growingLocationId': serializer.toJson<int?>(growingLocationId),
     };
   }
 
@@ -305,7 +437,12 @@ class Orchid extends DataClass implements Insertable<Orchid> {
           Value<DateTime?> dateAcquired = const Value.absent(),
           DateTime? createdAt,
           bool? isDemo,
-          int? soakDurationMinutes}) =>
+          int? soakDurationMinutes,
+          Value<BloomStage?> currentBloomStage = const Value.absent(),
+          Value<DateTime?> lastPotted = const Value.absent(),
+          bool? isRescue,
+          Value<int?> speciesProfileId = const Value.absent(),
+          Value<int?> growingLocationId = const Value.absent()}) =>
       Orchid(
         id: id ?? this.id,
         name: name ?? this.name,
@@ -318,6 +455,17 @@ class Orchid extends DataClass implements Insertable<Orchid> {
         createdAt: createdAt ?? this.createdAt,
         isDemo: isDemo ?? this.isDemo,
         soakDurationMinutes: soakDurationMinutes ?? this.soakDurationMinutes,
+        currentBloomStage: currentBloomStage.present
+            ? currentBloomStage.value
+            : this.currentBloomStage,
+        lastPotted: lastPotted.present ? lastPotted.value : this.lastPotted,
+        isRescue: isRescue ?? this.isRescue,
+        speciesProfileId: speciesProfileId.present
+            ? speciesProfileId.value
+            : this.speciesProfileId,
+        growingLocationId: growingLocationId.present
+            ? growingLocationId.value
+            : this.growingLocationId,
       );
   @override
   String toString() {
@@ -331,14 +479,33 @@ class Orchid extends DataClass implements Insertable<Orchid> {
           ..write('dateAcquired: $dateAcquired, ')
           ..write('createdAt: $createdAt, ')
           ..write('isDemo: $isDemo, ')
-          ..write('soakDurationMinutes: $soakDurationMinutes')
+          ..write('soakDurationMinutes: $soakDurationMinutes, ')
+          ..write('currentBloomStage: $currentBloomStage, ')
+          ..write('lastPotted: $lastPotted, ')
+          ..write('isRescue: $isRescue, ')
+          ..write('speciesProfileId: $speciesProfileId, ')
+          ..write('growingLocationId: $growingLocationId')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, variety, location, photoPath, notes,
-      dateAcquired, createdAt, isDemo, soakDurationMinutes);
+  int get hashCode => Object.hash(
+      id,
+      name,
+      variety,
+      location,
+      photoPath,
+      notes,
+      dateAcquired,
+      createdAt,
+      isDemo,
+      soakDurationMinutes,
+      currentBloomStage,
+      lastPotted,
+      isRescue,
+      speciesProfileId,
+      growingLocationId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -352,7 +519,12 @@ class Orchid extends DataClass implements Insertable<Orchid> {
           other.dateAcquired == this.dateAcquired &&
           other.createdAt == this.createdAt &&
           other.isDemo == this.isDemo &&
-          other.soakDurationMinutes == this.soakDurationMinutes);
+          other.soakDurationMinutes == this.soakDurationMinutes &&
+          other.currentBloomStage == this.currentBloomStage &&
+          other.lastPotted == this.lastPotted &&
+          other.isRescue == this.isRescue &&
+          other.speciesProfileId == this.speciesProfileId &&
+          other.growingLocationId == this.growingLocationId);
 }
 
 class OrchidsCompanion extends UpdateCompanion<Orchid> {
@@ -366,6 +538,11 @@ class OrchidsCompanion extends UpdateCompanion<Orchid> {
   final Value<DateTime> createdAt;
   final Value<bool> isDemo;
   final Value<int> soakDurationMinutes;
+  final Value<BloomStage?> currentBloomStage;
+  final Value<DateTime?> lastPotted;
+  final Value<bool> isRescue;
+  final Value<int?> speciesProfileId;
+  final Value<int?> growingLocationId;
   const OrchidsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -377,6 +554,11 @@ class OrchidsCompanion extends UpdateCompanion<Orchid> {
     this.createdAt = const Value.absent(),
     this.isDemo = const Value.absent(),
     this.soakDurationMinutes = const Value.absent(),
+    this.currentBloomStage = const Value.absent(),
+    this.lastPotted = const Value.absent(),
+    this.isRescue = const Value.absent(),
+    this.speciesProfileId = const Value.absent(),
+    this.growingLocationId = const Value.absent(),
   });
   OrchidsCompanion.insert({
     this.id = const Value.absent(),
@@ -389,6 +571,11 @@ class OrchidsCompanion extends UpdateCompanion<Orchid> {
     this.createdAt = const Value.absent(),
     this.isDemo = const Value.absent(),
     this.soakDurationMinutes = const Value.absent(),
+    this.currentBloomStage = const Value.absent(),
+    this.lastPotted = const Value.absent(),
+    this.isRescue = const Value.absent(),
+    this.speciesProfileId = const Value.absent(),
+    this.growingLocationId = const Value.absent(),
   }) : name = Value(name);
   static Insertable<Orchid> custom({
     Expression<int>? id,
@@ -401,6 +588,11 @@ class OrchidsCompanion extends UpdateCompanion<Orchid> {
     Expression<DateTime>? createdAt,
     Expression<bool>? isDemo,
     Expression<int>? soakDurationMinutes,
+    Expression<String>? currentBloomStage,
+    Expression<DateTime>? lastPotted,
+    Expression<bool>? isRescue,
+    Expression<int>? speciesProfileId,
+    Expression<int>? growingLocationId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -414,6 +606,11 @@ class OrchidsCompanion extends UpdateCompanion<Orchid> {
       if (isDemo != null) 'is_demo': isDemo,
       if (soakDurationMinutes != null)
         'soak_duration_minutes': soakDurationMinutes,
+      if (currentBloomStage != null) 'current_bloom_stage': currentBloomStage,
+      if (lastPotted != null) 'last_potted': lastPotted,
+      if (isRescue != null) 'is_rescue': isRescue,
+      if (speciesProfileId != null) 'species_profile_id': speciesProfileId,
+      if (growingLocationId != null) 'growing_location_id': growingLocationId,
     });
   }
 
@@ -427,7 +624,12 @@ class OrchidsCompanion extends UpdateCompanion<Orchid> {
       Value<DateTime?>? dateAcquired,
       Value<DateTime>? createdAt,
       Value<bool>? isDemo,
-      Value<int>? soakDurationMinutes}) {
+      Value<int>? soakDurationMinutes,
+      Value<BloomStage?>? currentBloomStage,
+      Value<DateTime?>? lastPotted,
+      Value<bool>? isRescue,
+      Value<int?>? speciesProfileId,
+      Value<int?>? growingLocationId}) {
     return OrchidsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
@@ -439,6 +641,11 @@ class OrchidsCompanion extends UpdateCompanion<Orchid> {
       createdAt: createdAt ?? this.createdAt,
       isDemo: isDemo ?? this.isDemo,
       soakDurationMinutes: soakDurationMinutes ?? this.soakDurationMinutes,
+      currentBloomStage: currentBloomStage ?? this.currentBloomStage,
+      lastPotted: lastPotted ?? this.lastPotted,
+      isRescue: isRescue ?? this.isRescue,
+      speciesProfileId: speciesProfileId ?? this.speciesProfileId,
+      growingLocationId: growingLocationId ?? this.growingLocationId,
     );
   }
 
@@ -475,6 +682,23 @@ class OrchidsCompanion extends UpdateCompanion<Orchid> {
     if (soakDurationMinutes.present) {
       map['soak_duration_minutes'] = Variable<int>(soakDurationMinutes.value);
     }
+    if (currentBloomStage.present) {
+      map['current_bloom_stage'] = Variable<String>($OrchidsTable
+          .$convertercurrentBloomStagen
+          .toSql(currentBloomStage.value));
+    }
+    if (lastPotted.present) {
+      map['last_potted'] = Variable<DateTime>(lastPotted.value);
+    }
+    if (isRescue.present) {
+      map['is_rescue'] = Variable<bool>(isRescue.value);
+    }
+    if (speciesProfileId.present) {
+      map['species_profile_id'] = Variable<int>(speciesProfileId.value);
+    }
+    if (growingLocationId.present) {
+      map['growing_location_id'] = Variable<int>(growingLocationId.value);
+    }
     return map;
   }
 
@@ -490,7 +714,12 @@ class OrchidsCompanion extends UpdateCompanion<Orchid> {
           ..write('dateAcquired: $dateAcquired, ')
           ..write('createdAt: $createdAt, ')
           ..write('isDemo: $isDemo, ')
-          ..write('soakDurationMinutes: $soakDurationMinutes')
+          ..write('soakDurationMinutes: $soakDurationMinutes, ')
+          ..write('currentBloomStage: $currentBloomStage, ')
+          ..write('lastPotted: $lastPotted, ')
+          ..write('isRescue: $isRescue, ')
+          ..write('speciesProfileId: $speciesProfileId, ')
+          ..write('growingLocationId: $growingLocationId')
           ..write(')'))
         .toString();
   }
@@ -2488,6 +2717,2020 @@ class SoakSessionTasksCompanion extends UpdateCompanion<SoakSessionTask> {
   }
 }
 
+class $BloomLogsTable extends BloomLogs
+    with TableInfo<$BloomLogsTable, BloomLog> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BloomLogsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _orchidIdMeta =
+      const VerificationMeta('orchidId');
+  @override
+  late final GeneratedColumn<int> orchidId = GeneratedColumn<int>(
+      'orchid_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES orchids (id)'));
+  static const VerificationMeta _stageMeta = const VerificationMeta('stage');
+  @override
+  late final GeneratedColumnWithTypeConverter<BloomStage, String> stage =
+      GeneratedColumn<String>('stage', aliasedName, false,
+              type: DriftSqlType.string, requiredDuringInsert: true)
+          .withConverter<BloomStage>($BloomLogsTable.$converterstage);
+  static const VerificationMeta _dateLoggedMeta =
+      const VerificationMeta('dateLogged');
+  @override
+  late final GeneratedColumn<DateTime> dateLogged = GeneratedColumn<DateTime>(
+      'date_logged', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+      'notes', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _photoPathMeta =
+      const VerificationMeta('photoPath');
+  @override
+  late final GeneratedColumn<String> photoPath = GeneratedColumn<String>(
+      'photo_path', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, orchidId, stage, dateLogged, notes, photoPath];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'bloom_logs';
+  @override
+  VerificationContext validateIntegrity(Insertable<BloomLog> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('orchid_id')) {
+      context.handle(_orchidIdMeta,
+          orchidId.isAcceptableOrUnknown(data['orchid_id']!, _orchidIdMeta));
+    } else if (isInserting) {
+      context.missing(_orchidIdMeta);
+    }
+    context.handle(_stageMeta, const VerificationResult.success());
+    if (data.containsKey('date_logged')) {
+      context.handle(
+          _dateLoggedMeta,
+          dateLogged.isAcceptableOrUnknown(
+              data['date_logged']!, _dateLoggedMeta));
+    } else if (isInserting) {
+      context.missing(_dateLoggedMeta);
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+          _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
+    }
+    if (data.containsKey('photo_path')) {
+      context.handle(_photoPathMeta,
+          photoPath.isAcceptableOrUnknown(data['photo_path']!, _photoPathMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  BloomLog map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BloomLog(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      orchidId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}orchid_id'])!,
+      stage: $BloomLogsTable.$converterstage.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}stage'])!),
+      dateLogged: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}date_logged'])!,
+      notes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}notes']),
+      photoPath: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}photo_path']),
+    );
+  }
+
+  @override
+  $BloomLogsTable createAlias(String alias) {
+    return $BloomLogsTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<BloomStage, String, String> $converterstage =
+      const EnumNameConverter<BloomStage>(BloomStage.values);
+}
+
+class BloomLog extends DataClass implements Insertable<BloomLog> {
+  final int id;
+  final int orchidId;
+  final BloomStage stage;
+  final DateTime dateLogged;
+  final String? notes;
+  final String? photoPath;
+  const BloomLog(
+      {required this.id,
+      required this.orchidId,
+      required this.stage,
+      required this.dateLogged,
+      this.notes,
+      this.photoPath});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['orchid_id'] = Variable<int>(orchidId);
+    {
+      map['stage'] =
+          Variable<String>($BloomLogsTable.$converterstage.toSql(stage));
+    }
+    map['date_logged'] = Variable<DateTime>(dateLogged);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    if (!nullToAbsent || photoPath != null) {
+      map['photo_path'] = Variable<String>(photoPath);
+    }
+    return map;
+  }
+
+  BloomLogsCompanion toCompanion(bool nullToAbsent) {
+    return BloomLogsCompanion(
+      id: Value(id),
+      orchidId: Value(orchidId),
+      stage: Value(stage),
+      dateLogged: Value(dateLogged),
+      notes:
+          notes == null && nullToAbsent ? const Value.absent() : Value(notes),
+      photoPath: photoPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(photoPath),
+    );
+  }
+
+  factory BloomLog.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BloomLog(
+      id: serializer.fromJson<int>(json['id']),
+      orchidId: serializer.fromJson<int>(json['orchidId']),
+      stage: $BloomLogsTable.$converterstage
+          .fromJson(serializer.fromJson<String>(json['stage'])),
+      dateLogged: serializer.fromJson<DateTime>(json['dateLogged']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      photoPath: serializer.fromJson<String?>(json['photoPath']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'orchidId': serializer.toJson<int>(orchidId),
+      'stage': serializer
+          .toJson<String>($BloomLogsTable.$converterstage.toJson(stage)),
+      'dateLogged': serializer.toJson<DateTime>(dateLogged),
+      'notes': serializer.toJson<String?>(notes),
+      'photoPath': serializer.toJson<String?>(photoPath),
+    };
+  }
+
+  BloomLog copyWith(
+          {int? id,
+          int? orchidId,
+          BloomStage? stage,
+          DateTime? dateLogged,
+          Value<String?> notes = const Value.absent(),
+          Value<String?> photoPath = const Value.absent()}) =>
+      BloomLog(
+        id: id ?? this.id,
+        orchidId: orchidId ?? this.orchidId,
+        stage: stage ?? this.stage,
+        dateLogged: dateLogged ?? this.dateLogged,
+        notes: notes.present ? notes.value : this.notes,
+        photoPath: photoPath.present ? photoPath.value : this.photoPath,
+      );
+  @override
+  String toString() {
+    return (StringBuffer('BloomLog(')
+          ..write('id: $id, ')
+          ..write('orchidId: $orchidId, ')
+          ..write('stage: $stage, ')
+          ..write('dateLogged: $dateLogged, ')
+          ..write('notes: $notes, ')
+          ..write('photoPath: $photoPath')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, orchidId, stage, dateLogged, notes, photoPath);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BloomLog &&
+          other.id == this.id &&
+          other.orchidId == this.orchidId &&
+          other.stage == this.stage &&
+          other.dateLogged == this.dateLogged &&
+          other.notes == this.notes &&
+          other.photoPath == this.photoPath);
+}
+
+class BloomLogsCompanion extends UpdateCompanion<BloomLog> {
+  final Value<int> id;
+  final Value<int> orchidId;
+  final Value<BloomStage> stage;
+  final Value<DateTime> dateLogged;
+  final Value<String?> notes;
+  final Value<String?> photoPath;
+  const BloomLogsCompanion({
+    this.id = const Value.absent(),
+    this.orchidId = const Value.absent(),
+    this.stage = const Value.absent(),
+    this.dateLogged = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.photoPath = const Value.absent(),
+  });
+  BloomLogsCompanion.insert({
+    this.id = const Value.absent(),
+    required int orchidId,
+    required BloomStage stage,
+    required DateTime dateLogged,
+    this.notes = const Value.absent(),
+    this.photoPath = const Value.absent(),
+  })  : orchidId = Value(orchidId),
+        stage = Value(stage),
+        dateLogged = Value(dateLogged);
+  static Insertable<BloomLog> custom({
+    Expression<int>? id,
+    Expression<int>? orchidId,
+    Expression<String>? stage,
+    Expression<DateTime>? dateLogged,
+    Expression<String>? notes,
+    Expression<String>? photoPath,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (orchidId != null) 'orchid_id': orchidId,
+      if (stage != null) 'stage': stage,
+      if (dateLogged != null) 'date_logged': dateLogged,
+      if (notes != null) 'notes': notes,
+      if (photoPath != null) 'photo_path': photoPath,
+    });
+  }
+
+  BloomLogsCompanion copyWith(
+      {Value<int>? id,
+      Value<int>? orchidId,
+      Value<BloomStage>? stage,
+      Value<DateTime>? dateLogged,
+      Value<String?>? notes,
+      Value<String?>? photoPath}) {
+    return BloomLogsCompanion(
+      id: id ?? this.id,
+      orchidId: orchidId ?? this.orchidId,
+      stage: stage ?? this.stage,
+      dateLogged: dateLogged ?? this.dateLogged,
+      notes: notes ?? this.notes,
+      photoPath: photoPath ?? this.photoPath,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (orchidId.present) {
+      map['orchid_id'] = Variable<int>(orchidId.value);
+    }
+    if (stage.present) {
+      map['stage'] =
+          Variable<String>($BloomLogsTable.$converterstage.toSql(stage.value));
+    }
+    if (dateLogged.present) {
+      map['date_logged'] = Variable<DateTime>(dateLogged.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (photoPath.present) {
+      map['photo_path'] = Variable<String>(photoPath.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BloomLogsCompanion(')
+          ..write('id: $id, ')
+          ..write('orchidId: $orchidId, ')
+          ..write('stage: $stage, ')
+          ..write('dateLogged: $dateLogged, ')
+          ..write('notes: $notes, ')
+          ..write('photoPath: $photoPath')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PhotoJournalTable extends PhotoJournal
+    with TableInfo<$PhotoJournalTable, PhotoJournalData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PhotoJournalTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _orchidIdMeta =
+      const VerificationMeta('orchidId');
+  @override
+  late final GeneratedColumn<int> orchidId = GeneratedColumn<int>(
+      'orchid_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES orchids (id)'));
+  static const VerificationMeta _photoPathMeta =
+      const VerificationMeta('photoPath');
+  @override
+  late final GeneratedColumn<String> photoPath = GeneratedColumn<String>(
+      'photo_path', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _dateTakenMeta =
+      const VerificationMeta('dateTaken');
+  @override
+  late final GeneratedColumn<DateTime> dateTaken = GeneratedColumn<DateTime>(
+      'date_taken', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+      'note', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _tagMeta = const VerificationMeta('tag');
+  @override
+  late final GeneratedColumnWithTypeConverter<PhotoTag, String> tag =
+      GeneratedColumn<String>('tag', aliasedName, false,
+              type: DriftSqlType.string, requiredDuringInsert: true)
+          .withConverter<PhotoTag>($PhotoJournalTable.$convertertag);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, orchidId, photoPath, dateTaken, note, tag];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'photo_journal';
+  @override
+  VerificationContext validateIntegrity(Insertable<PhotoJournalData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('orchid_id')) {
+      context.handle(_orchidIdMeta,
+          orchidId.isAcceptableOrUnknown(data['orchid_id']!, _orchidIdMeta));
+    } else if (isInserting) {
+      context.missing(_orchidIdMeta);
+    }
+    if (data.containsKey('photo_path')) {
+      context.handle(_photoPathMeta,
+          photoPath.isAcceptableOrUnknown(data['photo_path']!, _photoPathMeta));
+    } else if (isInserting) {
+      context.missing(_photoPathMeta);
+    }
+    if (data.containsKey('date_taken')) {
+      context.handle(_dateTakenMeta,
+          dateTaken.isAcceptableOrUnknown(data['date_taken']!, _dateTakenMeta));
+    } else if (isInserting) {
+      context.missing(_dateTakenMeta);
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+          _noteMeta, note.isAcceptableOrUnknown(data['note']!, _noteMeta));
+    }
+    context.handle(_tagMeta, const VerificationResult.success());
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PhotoJournalData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PhotoJournalData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      orchidId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}orchid_id'])!,
+      photoPath: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}photo_path'])!,
+      dateTaken: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}date_taken'])!,
+      note: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}note']),
+      tag: $PhotoJournalTable.$convertertag.fromSql(attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}tag'])!),
+    );
+  }
+
+  @override
+  $PhotoJournalTable createAlias(String alias) {
+    return $PhotoJournalTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<PhotoTag, String, String> $convertertag =
+      const EnumNameConverter<PhotoTag>(PhotoTag.values);
+}
+
+class PhotoJournalData extends DataClass
+    implements Insertable<PhotoJournalData> {
+  final int id;
+  final int orchidId;
+  final String photoPath;
+  final DateTime dateTaken;
+  final String? note;
+  final PhotoTag tag;
+  const PhotoJournalData(
+      {required this.id,
+      required this.orchidId,
+      required this.photoPath,
+      required this.dateTaken,
+      this.note,
+      required this.tag});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['orchid_id'] = Variable<int>(orchidId);
+    map['photo_path'] = Variable<String>(photoPath);
+    map['date_taken'] = Variable<DateTime>(dateTaken);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    {
+      map['tag'] =
+          Variable<String>($PhotoJournalTable.$convertertag.toSql(tag));
+    }
+    return map;
+  }
+
+  PhotoJournalCompanion toCompanion(bool nullToAbsent) {
+    return PhotoJournalCompanion(
+      id: Value(id),
+      orchidId: Value(orchidId),
+      photoPath: Value(photoPath),
+      dateTaken: Value(dateTaken),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      tag: Value(tag),
+    );
+  }
+
+  factory PhotoJournalData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PhotoJournalData(
+      id: serializer.fromJson<int>(json['id']),
+      orchidId: serializer.fromJson<int>(json['orchidId']),
+      photoPath: serializer.fromJson<String>(json['photoPath']),
+      dateTaken: serializer.fromJson<DateTime>(json['dateTaken']),
+      note: serializer.fromJson<String?>(json['note']),
+      tag: $PhotoJournalTable.$convertertag
+          .fromJson(serializer.fromJson<String>(json['tag'])),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'orchidId': serializer.toJson<int>(orchidId),
+      'photoPath': serializer.toJson<String>(photoPath),
+      'dateTaken': serializer.toJson<DateTime>(dateTaken),
+      'note': serializer.toJson<String?>(note),
+      'tag': serializer
+          .toJson<String>($PhotoJournalTable.$convertertag.toJson(tag)),
+    };
+  }
+
+  PhotoJournalData copyWith(
+          {int? id,
+          int? orchidId,
+          String? photoPath,
+          DateTime? dateTaken,
+          Value<String?> note = const Value.absent(),
+          PhotoTag? tag}) =>
+      PhotoJournalData(
+        id: id ?? this.id,
+        orchidId: orchidId ?? this.orchidId,
+        photoPath: photoPath ?? this.photoPath,
+        dateTaken: dateTaken ?? this.dateTaken,
+        note: note.present ? note.value : this.note,
+        tag: tag ?? this.tag,
+      );
+  @override
+  String toString() {
+    return (StringBuffer('PhotoJournalData(')
+          ..write('id: $id, ')
+          ..write('orchidId: $orchidId, ')
+          ..write('photoPath: $photoPath, ')
+          ..write('dateTaken: $dateTaken, ')
+          ..write('note: $note, ')
+          ..write('tag: $tag')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, orchidId, photoPath, dateTaken, note, tag);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PhotoJournalData &&
+          other.id == this.id &&
+          other.orchidId == this.orchidId &&
+          other.photoPath == this.photoPath &&
+          other.dateTaken == this.dateTaken &&
+          other.note == this.note &&
+          other.tag == this.tag);
+}
+
+class PhotoJournalCompanion extends UpdateCompanion<PhotoJournalData> {
+  final Value<int> id;
+  final Value<int> orchidId;
+  final Value<String> photoPath;
+  final Value<DateTime> dateTaken;
+  final Value<String?> note;
+  final Value<PhotoTag> tag;
+  const PhotoJournalCompanion({
+    this.id = const Value.absent(),
+    this.orchidId = const Value.absent(),
+    this.photoPath = const Value.absent(),
+    this.dateTaken = const Value.absent(),
+    this.note = const Value.absent(),
+    this.tag = const Value.absent(),
+  });
+  PhotoJournalCompanion.insert({
+    this.id = const Value.absent(),
+    required int orchidId,
+    required String photoPath,
+    required DateTime dateTaken,
+    this.note = const Value.absent(),
+    required PhotoTag tag,
+  })  : orchidId = Value(orchidId),
+        photoPath = Value(photoPath),
+        dateTaken = Value(dateTaken),
+        tag = Value(tag);
+  static Insertable<PhotoJournalData> custom({
+    Expression<int>? id,
+    Expression<int>? orchidId,
+    Expression<String>? photoPath,
+    Expression<DateTime>? dateTaken,
+    Expression<String>? note,
+    Expression<String>? tag,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (orchidId != null) 'orchid_id': orchidId,
+      if (photoPath != null) 'photo_path': photoPath,
+      if (dateTaken != null) 'date_taken': dateTaken,
+      if (note != null) 'note': note,
+      if (tag != null) 'tag': tag,
+    });
+  }
+
+  PhotoJournalCompanion copyWith(
+      {Value<int>? id,
+      Value<int>? orchidId,
+      Value<String>? photoPath,
+      Value<DateTime>? dateTaken,
+      Value<String?>? note,
+      Value<PhotoTag>? tag}) {
+    return PhotoJournalCompanion(
+      id: id ?? this.id,
+      orchidId: orchidId ?? this.orchidId,
+      photoPath: photoPath ?? this.photoPath,
+      dateTaken: dateTaken ?? this.dateTaken,
+      note: note ?? this.note,
+      tag: tag ?? this.tag,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (orchidId.present) {
+      map['orchid_id'] = Variable<int>(orchidId.value);
+    }
+    if (photoPath.present) {
+      map['photo_path'] = Variable<String>(photoPath.value);
+    }
+    if (dateTaken.present) {
+      map['date_taken'] = Variable<DateTime>(dateTaken.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (tag.present) {
+      map['tag'] =
+          Variable<String>($PhotoJournalTable.$convertertag.toSql(tag.value));
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PhotoJournalCompanion(')
+          ..write('id: $id, ')
+          ..write('orchidId: $orchidId, ')
+          ..write('photoPath: $photoPath, ')
+          ..write('dateTaken: $dateTaken, ')
+          ..write('note: $note, ')
+          ..write('tag: $tag')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SpeciesProfilesTable extends SpeciesProfiles
+    with TableInfo<$SpeciesProfilesTable, SpeciesProfile> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SpeciesProfilesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _commonNameMeta =
+      const VerificationMeta('commonName');
+  @override
+  late final GeneratedColumn<String> commonName = GeneratedColumn<String>(
+      'common_name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _genusMeta = const VerificationMeta('genus');
+  @override
+  late final GeneratedColumn<String> genus = GeneratedColumn<String>(
+      'genus', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _speciesMeta =
+      const VerificationMeta('species');
+  @override
+  late final GeneratedColumn<String> species = GeneratedColumn<String>(
+      'species', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _idealLuxMinMeta =
+      const VerificationMeta('idealLuxMin');
+  @override
+  late final GeneratedColumn<int> idealLuxMin = GeneratedColumn<int>(
+      'ideal_lux_min', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _idealLuxMaxMeta =
+      const VerificationMeta('idealLuxMax');
+  @override
+  late final GeneratedColumn<int> idealLuxMax = GeneratedColumn<int>(
+      'ideal_lux_max', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _tempMinFMeta =
+      const VerificationMeta('tempMinF');
+  @override
+  late final GeneratedColumn<int> tempMinF = GeneratedColumn<int>(
+      'temp_min_f', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _tempMaxFMeta =
+      const VerificationMeta('tempMaxF');
+  @override
+  late final GeneratedColumn<int> tempMaxF = GeneratedColumn<int>(
+      'temp_max_f', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _tempNightDropFMeta =
+      const VerificationMeta('tempNightDropF');
+  @override
+  late final GeneratedColumn<int> tempNightDropF = GeneratedColumn<int>(
+      'temp_night_drop_f', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _humidityMeta =
+      const VerificationMeta('humidity');
+  @override
+  late final GeneratedColumn<String> humidity = GeneratedColumn<String>(
+      'humidity', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _bloomSeasonMeta =
+      const VerificationMeta('bloomSeason');
+  @override
+  late final GeneratedColumn<String> bloomSeason = GeneratedColumn<String>(
+      'bloom_season', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _wateringNotesMeta =
+      const VerificationMeta('wateringNotes');
+  @override
+  late final GeneratedColumn<String> wateringNotes = GeneratedColumn<String>(
+      'watering_notes', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _fertilizingNotesMeta =
+      const VerificationMeta('fertilizingNotes');
+  @override
+  late final GeneratedColumn<String> fertilizingNotes = GeneratedColumn<String>(
+      'fertilizing_notes', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _difficultyLevelMeta =
+      const VerificationMeta('difficultyLevel');
+  @override
+  late final GeneratedColumn<String> difficultyLevel = GeneratedColumn<String>(
+      'difficulty_level', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _descriptionMeta =
+      const VerificationMeta('description');
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+      'description', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        commonName,
+        genus,
+        species,
+        idealLuxMin,
+        idealLuxMax,
+        tempMinF,
+        tempMaxF,
+        tempNightDropF,
+        humidity,
+        bloomSeason,
+        wateringNotes,
+        fertilizingNotes,
+        difficultyLevel,
+        description
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'species_profiles';
+  @override
+  VerificationContext validateIntegrity(Insertable<SpeciesProfile> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('common_name')) {
+      context.handle(
+          _commonNameMeta,
+          commonName.isAcceptableOrUnknown(
+              data['common_name']!, _commonNameMeta));
+    } else if (isInserting) {
+      context.missing(_commonNameMeta);
+    }
+    if (data.containsKey('genus')) {
+      context.handle(
+          _genusMeta, genus.isAcceptableOrUnknown(data['genus']!, _genusMeta));
+    } else if (isInserting) {
+      context.missing(_genusMeta);
+    }
+    if (data.containsKey('species')) {
+      context.handle(_speciesMeta,
+          species.isAcceptableOrUnknown(data['species']!, _speciesMeta));
+    }
+    if (data.containsKey('ideal_lux_min')) {
+      context.handle(
+          _idealLuxMinMeta,
+          idealLuxMin.isAcceptableOrUnknown(
+              data['ideal_lux_min']!, _idealLuxMinMeta));
+    }
+    if (data.containsKey('ideal_lux_max')) {
+      context.handle(
+          _idealLuxMaxMeta,
+          idealLuxMax.isAcceptableOrUnknown(
+              data['ideal_lux_max']!, _idealLuxMaxMeta));
+    }
+    if (data.containsKey('temp_min_f')) {
+      context.handle(_tempMinFMeta,
+          tempMinF.isAcceptableOrUnknown(data['temp_min_f']!, _tempMinFMeta));
+    }
+    if (data.containsKey('temp_max_f')) {
+      context.handle(_tempMaxFMeta,
+          tempMaxF.isAcceptableOrUnknown(data['temp_max_f']!, _tempMaxFMeta));
+    }
+    if (data.containsKey('temp_night_drop_f')) {
+      context.handle(
+          _tempNightDropFMeta,
+          tempNightDropF.isAcceptableOrUnknown(
+              data['temp_night_drop_f']!, _tempNightDropFMeta));
+    }
+    if (data.containsKey('humidity')) {
+      context.handle(_humidityMeta,
+          humidity.isAcceptableOrUnknown(data['humidity']!, _humidityMeta));
+    }
+    if (data.containsKey('bloom_season')) {
+      context.handle(
+          _bloomSeasonMeta,
+          bloomSeason.isAcceptableOrUnknown(
+              data['bloom_season']!, _bloomSeasonMeta));
+    }
+    if (data.containsKey('watering_notes')) {
+      context.handle(
+          _wateringNotesMeta,
+          wateringNotes.isAcceptableOrUnknown(
+              data['watering_notes']!, _wateringNotesMeta));
+    }
+    if (data.containsKey('fertilizing_notes')) {
+      context.handle(
+          _fertilizingNotesMeta,
+          fertilizingNotes.isAcceptableOrUnknown(
+              data['fertilizing_notes']!, _fertilizingNotesMeta));
+    }
+    if (data.containsKey('difficulty_level')) {
+      context.handle(
+          _difficultyLevelMeta,
+          difficultyLevel.isAcceptableOrUnknown(
+              data['difficulty_level']!, _difficultyLevelMeta));
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+          _descriptionMeta,
+          description.isAcceptableOrUnknown(
+              data['description']!, _descriptionMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SpeciesProfile map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SpeciesProfile(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      commonName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}common_name'])!,
+      genus: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}genus'])!,
+      species: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}species']),
+      idealLuxMin: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}ideal_lux_min']),
+      idealLuxMax: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}ideal_lux_max']),
+      tempMinF: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}temp_min_f']),
+      tempMaxF: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}temp_max_f']),
+      tempNightDropF: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}temp_night_drop_f']),
+      humidity: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}humidity']),
+      bloomSeason: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}bloom_season']),
+      wateringNotes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}watering_notes']),
+      fertilizingNotes: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}fertilizing_notes']),
+      difficultyLevel: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}difficulty_level']),
+      description: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}description']),
+    );
+  }
+
+  @override
+  $SpeciesProfilesTable createAlias(String alias) {
+    return $SpeciesProfilesTable(attachedDatabase, alias);
+  }
+}
+
+class SpeciesProfile extends DataClass implements Insertable<SpeciesProfile> {
+  final int id;
+  final String commonName;
+  final String genus;
+  final String? species;
+  final int? idealLuxMin;
+  final int? idealLuxMax;
+  final int? tempMinF;
+  final int? tempMaxF;
+  final int? tempNightDropF;
+  final String? humidity;
+  final String? bloomSeason;
+  final String? wateringNotes;
+  final String? fertilizingNotes;
+  final String? difficultyLevel;
+  final String? description;
+  const SpeciesProfile(
+      {required this.id,
+      required this.commonName,
+      required this.genus,
+      this.species,
+      this.idealLuxMin,
+      this.idealLuxMax,
+      this.tempMinF,
+      this.tempMaxF,
+      this.tempNightDropF,
+      this.humidity,
+      this.bloomSeason,
+      this.wateringNotes,
+      this.fertilizingNotes,
+      this.difficultyLevel,
+      this.description});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['common_name'] = Variable<String>(commonName);
+    map['genus'] = Variable<String>(genus);
+    if (!nullToAbsent || species != null) {
+      map['species'] = Variable<String>(species);
+    }
+    if (!nullToAbsent || idealLuxMin != null) {
+      map['ideal_lux_min'] = Variable<int>(idealLuxMin);
+    }
+    if (!nullToAbsent || idealLuxMax != null) {
+      map['ideal_lux_max'] = Variable<int>(idealLuxMax);
+    }
+    if (!nullToAbsent || tempMinF != null) {
+      map['temp_min_f'] = Variable<int>(tempMinF);
+    }
+    if (!nullToAbsent || tempMaxF != null) {
+      map['temp_max_f'] = Variable<int>(tempMaxF);
+    }
+    if (!nullToAbsent || tempNightDropF != null) {
+      map['temp_night_drop_f'] = Variable<int>(tempNightDropF);
+    }
+    if (!nullToAbsent || humidity != null) {
+      map['humidity'] = Variable<String>(humidity);
+    }
+    if (!nullToAbsent || bloomSeason != null) {
+      map['bloom_season'] = Variable<String>(bloomSeason);
+    }
+    if (!nullToAbsent || wateringNotes != null) {
+      map['watering_notes'] = Variable<String>(wateringNotes);
+    }
+    if (!nullToAbsent || fertilizingNotes != null) {
+      map['fertilizing_notes'] = Variable<String>(fertilizingNotes);
+    }
+    if (!nullToAbsent || difficultyLevel != null) {
+      map['difficulty_level'] = Variable<String>(difficultyLevel);
+    }
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    return map;
+  }
+
+  SpeciesProfilesCompanion toCompanion(bool nullToAbsent) {
+    return SpeciesProfilesCompanion(
+      id: Value(id),
+      commonName: Value(commonName),
+      genus: Value(genus),
+      species: species == null && nullToAbsent
+          ? const Value.absent()
+          : Value(species),
+      idealLuxMin: idealLuxMin == null && nullToAbsent
+          ? const Value.absent()
+          : Value(idealLuxMin),
+      idealLuxMax: idealLuxMax == null && nullToAbsent
+          ? const Value.absent()
+          : Value(idealLuxMax),
+      tempMinF: tempMinF == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tempMinF),
+      tempMaxF: tempMaxF == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tempMaxF),
+      tempNightDropF: tempNightDropF == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tempNightDropF),
+      humidity: humidity == null && nullToAbsent
+          ? const Value.absent()
+          : Value(humidity),
+      bloomSeason: bloomSeason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bloomSeason),
+      wateringNotes: wateringNotes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(wateringNotes),
+      fertilizingNotes: fertilizingNotes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fertilizingNotes),
+      difficultyLevel: difficultyLevel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(difficultyLevel),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+    );
+  }
+
+  factory SpeciesProfile.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SpeciesProfile(
+      id: serializer.fromJson<int>(json['id']),
+      commonName: serializer.fromJson<String>(json['commonName']),
+      genus: serializer.fromJson<String>(json['genus']),
+      species: serializer.fromJson<String?>(json['species']),
+      idealLuxMin: serializer.fromJson<int?>(json['idealLuxMin']),
+      idealLuxMax: serializer.fromJson<int?>(json['idealLuxMax']),
+      tempMinF: serializer.fromJson<int?>(json['tempMinF']),
+      tempMaxF: serializer.fromJson<int?>(json['tempMaxF']),
+      tempNightDropF: serializer.fromJson<int?>(json['tempNightDropF']),
+      humidity: serializer.fromJson<String?>(json['humidity']),
+      bloomSeason: serializer.fromJson<String?>(json['bloomSeason']),
+      wateringNotes: serializer.fromJson<String?>(json['wateringNotes']),
+      fertilizingNotes: serializer.fromJson<String?>(json['fertilizingNotes']),
+      difficultyLevel: serializer.fromJson<String?>(json['difficultyLevel']),
+      description: serializer.fromJson<String?>(json['description']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'commonName': serializer.toJson<String>(commonName),
+      'genus': serializer.toJson<String>(genus),
+      'species': serializer.toJson<String?>(species),
+      'idealLuxMin': serializer.toJson<int?>(idealLuxMin),
+      'idealLuxMax': serializer.toJson<int?>(idealLuxMax),
+      'tempMinF': serializer.toJson<int?>(tempMinF),
+      'tempMaxF': serializer.toJson<int?>(tempMaxF),
+      'tempNightDropF': serializer.toJson<int?>(tempNightDropF),
+      'humidity': serializer.toJson<String?>(humidity),
+      'bloomSeason': serializer.toJson<String?>(bloomSeason),
+      'wateringNotes': serializer.toJson<String?>(wateringNotes),
+      'fertilizingNotes': serializer.toJson<String?>(fertilizingNotes),
+      'difficultyLevel': serializer.toJson<String?>(difficultyLevel),
+      'description': serializer.toJson<String?>(description),
+    };
+  }
+
+  SpeciesProfile copyWith(
+          {int? id,
+          String? commonName,
+          String? genus,
+          Value<String?> species = const Value.absent(),
+          Value<int?> idealLuxMin = const Value.absent(),
+          Value<int?> idealLuxMax = const Value.absent(),
+          Value<int?> tempMinF = const Value.absent(),
+          Value<int?> tempMaxF = const Value.absent(),
+          Value<int?> tempNightDropF = const Value.absent(),
+          Value<String?> humidity = const Value.absent(),
+          Value<String?> bloomSeason = const Value.absent(),
+          Value<String?> wateringNotes = const Value.absent(),
+          Value<String?> fertilizingNotes = const Value.absent(),
+          Value<String?> difficultyLevel = const Value.absent(),
+          Value<String?> description = const Value.absent()}) =>
+      SpeciesProfile(
+        id: id ?? this.id,
+        commonName: commonName ?? this.commonName,
+        genus: genus ?? this.genus,
+        species: species.present ? species.value : this.species,
+        idealLuxMin: idealLuxMin.present ? idealLuxMin.value : this.idealLuxMin,
+        idealLuxMax: idealLuxMax.present ? idealLuxMax.value : this.idealLuxMax,
+        tempMinF: tempMinF.present ? tempMinF.value : this.tempMinF,
+        tempMaxF: tempMaxF.present ? tempMaxF.value : this.tempMaxF,
+        tempNightDropF:
+            tempNightDropF.present ? tempNightDropF.value : this.tempNightDropF,
+        humidity: humidity.present ? humidity.value : this.humidity,
+        bloomSeason: bloomSeason.present ? bloomSeason.value : this.bloomSeason,
+        wateringNotes:
+            wateringNotes.present ? wateringNotes.value : this.wateringNotes,
+        fertilizingNotes: fertilizingNotes.present
+            ? fertilizingNotes.value
+            : this.fertilizingNotes,
+        difficultyLevel: difficultyLevel.present
+            ? difficultyLevel.value
+            : this.difficultyLevel,
+        description: description.present ? description.value : this.description,
+      );
+  @override
+  String toString() {
+    return (StringBuffer('SpeciesProfile(')
+          ..write('id: $id, ')
+          ..write('commonName: $commonName, ')
+          ..write('genus: $genus, ')
+          ..write('species: $species, ')
+          ..write('idealLuxMin: $idealLuxMin, ')
+          ..write('idealLuxMax: $idealLuxMax, ')
+          ..write('tempMinF: $tempMinF, ')
+          ..write('tempMaxF: $tempMaxF, ')
+          ..write('tempNightDropF: $tempNightDropF, ')
+          ..write('humidity: $humidity, ')
+          ..write('bloomSeason: $bloomSeason, ')
+          ..write('wateringNotes: $wateringNotes, ')
+          ..write('fertilizingNotes: $fertilizingNotes, ')
+          ..write('difficultyLevel: $difficultyLevel, ')
+          ..write('description: $description')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      commonName,
+      genus,
+      species,
+      idealLuxMin,
+      idealLuxMax,
+      tempMinF,
+      tempMaxF,
+      tempNightDropF,
+      humidity,
+      bloomSeason,
+      wateringNotes,
+      fertilizingNotes,
+      difficultyLevel,
+      description);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SpeciesProfile &&
+          other.id == this.id &&
+          other.commonName == this.commonName &&
+          other.genus == this.genus &&
+          other.species == this.species &&
+          other.idealLuxMin == this.idealLuxMin &&
+          other.idealLuxMax == this.idealLuxMax &&
+          other.tempMinF == this.tempMinF &&
+          other.tempMaxF == this.tempMaxF &&
+          other.tempNightDropF == this.tempNightDropF &&
+          other.humidity == this.humidity &&
+          other.bloomSeason == this.bloomSeason &&
+          other.wateringNotes == this.wateringNotes &&
+          other.fertilizingNotes == this.fertilizingNotes &&
+          other.difficultyLevel == this.difficultyLevel &&
+          other.description == this.description);
+}
+
+class SpeciesProfilesCompanion extends UpdateCompanion<SpeciesProfile> {
+  final Value<int> id;
+  final Value<String> commonName;
+  final Value<String> genus;
+  final Value<String?> species;
+  final Value<int?> idealLuxMin;
+  final Value<int?> idealLuxMax;
+  final Value<int?> tempMinF;
+  final Value<int?> tempMaxF;
+  final Value<int?> tempNightDropF;
+  final Value<String?> humidity;
+  final Value<String?> bloomSeason;
+  final Value<String?> wateringNotes;
+  final Value<String?> fertilizingNotes;
+  final Value<String?> difficultyLevel;
+  final Value<String?> description;
+  const SpeciesProfilesCompanion({
+    this.id = const Value.absent(),
+    this.commonName = const Value.absent(),
+    this.genus = const Value.absent(),
+    this.species = const Value.absent(),
+    this.idealLuxMin = const Value.absent(),
+    this.idealLuxMax = const Value.absent(),
+    this.tempMinF = const Value.absent(),
+    this.tempMaxF = const Value.absent(),
+    this.tempNightDropF = const Value.absent(),
+    this.humidity = const Value.absent(),
+    this.bloomSeason = const Value.absent(),
+    this.wateringNotes = const Value.absent(),
+    this.fertilizingNotes = const Value.absent(),
+    this.difficultyLevel = const Value.absent(),
+    this.description = const Value.absent(),
+  });
+  SpeciesProfilesCompanion.insert({
+    this.id = const Value.absent(),
+    required String commonName,
+    required String genus,
+    this.species = const Value.absent(),
+    this.idealLuxMin = const Value.absent(),
+    this.idealLuxMax = const Value.absent(),
+    this.tempMinF = const Value.absent(),
+    this.tempMaxF = const Value.absent(),
+    this.tempNightDropF = const Value.absent(),
+    this.humidity = const Value.absent(),
+    this.bloomSeason = const Value.absent(),
+    this.wateringNotes = const Value.absent(),
+    this.fertilizingNotes = const Value.absent(),
+    this.difficultyLevel = const Value.absent(),
+    this.description = const Value.absent(),
+  })  : commonName = Value(commonName),
+        genus = Value(genus);
+  static Insertable<SpeciesProfile> custom({
+    Expression<int>? id,
+    Expression<String>? commonName,
+    Expression<String>? genus,
+    Expression<String>? species,
+    Expression<int>? idealLuxMin,
+    Expression<int>? idealLuxMax,
+    Expression<int>? tempMinF,
+    Expression<int>? tempMaxF,
+    Expression<int>? tempNightDropF,
+    Expression<String>? humidity,
+    Expression<String>? bloomSeason,
+    Expression<String>? wateringNotes,
+    Expression<String>? fertilizingNotes,
+    Expression<String>? difficultyLevel,
+    Expression<String>? description,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (commonName != null) 'common_name': commonName,
+      if (genus != null) 'genus': genus,
+      if (species != null) 'species': species,
+      if (idealLuxMin != null) 'ideal_lux_min': idealLuxMin,
+      if (idealLuxMax != null) 'ideal_lux_max': idealLuxMax,
+      if (tempMinF != null) 'temp_min_f': tempMinF,
+      if (tempMaxF != null) 'temp_max_f': tempMaxF,
+      if (tempNightDropF != null) 'temp_night_drop_f': tempNightDropF,
+      if (humidity != null) 'humidity': humidity,
+      if (bloomSeason != null) 'bloom_season': bloomSeason,
+      if (wateringNotes != null) 'watering_notes': wateringNotes,
+      if (fertilizingNotes != null) 'fertilizing_notes': fertilizingNotes,
+      if (difficultyLevel != null) 'difficulty_level': difficultyLevel,
+      if (description != null) 'description': description,
+    });
+  }
+
+  SpeciesProfilesCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? commonName,
+      Value<String>? genus,
+      Value<String?>? species,
+      Value<int?>? idealLuxMin,
+      Value<int?>? idealLuxMax,
+      Value<int?>? tempMinF,
+      Value<int?>? tempMaxF,
+      Value<int?>? tempNightDropF,
+      Value<String?>? humidity,
+      Value<String?>? bloomSeason,
+      Value<String?>? wateringNotes,
+      Value<String?>? fertilizingNotes,
+      Value<String?>? difficultyLevel,
+      Value<String?>? description}) {
+    return SpeciesProfilesCompanion(
+      id: id ?? this.id,
+      commonName: commonName ?? this.commonName,
+      genus: genus ?? this.genus,
+      species: species ?? this.species,
+      idealLuxMin: idealLuxMin ?? this.idealLuxMin,
+      idealLuxMax: idealLuxMax ?? this.idealLuxMax,
+      tempMinF: tempMinF ?? this.tempMinF,
+      tempMaxF: tempMaxF ?? this.tempMaxF,
+      tempNightDropF: tempNightDropF ?? this.tempNightDropF,
+      humidity: humidity ?? this.humidity,
+      bloomSeason: bloomSeason ?? this.bloomSeason,
+      wateringNotes: wateringNotes ?? this.wateringNotes,
+      fertilizingNotes: fertilizingNotes ?? this.fertilizingNotes,
+      difficultyLevel: difficultyLevel ?? this.difficultyLevel,
+      description: description ?? this.description,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (commonName.present) {
+      map['common_name'] = Variable<String>(commonName.value);
+    }
+    if (genus.present) {
+      map['genus'] = Variable<String>(genus.value);
+    }
+    if (species.present) {
+      map['species'] = Variable<String>(species.value);
+    }
+    if (idealLuxMin.present) {
+      map['ideal_lux_min'] = Variable<int>(idealLuxMin.value);
+    }
+    if (idealLuxMax.present) {
+      map['ideal_lux_max'] = Variable<int>(idealLuxMax.value);
+    }
+    if (tempMinF.present) {
+      map['temp_min_f'] = Variable<int>(tempMinF.value);
+    }
+    if (tempMaxF.present) {
+      map['temp_max_f'] = Variable<int>(tempMaxF.value);
+    }
+    if (tempNightDropF.present) {
+      map['temp_night_drop_f'] = Variable<int>(tempNightDropF.value);
+    }
+    if (humidity.present) {
+      map['humidity'] = Variable<String>(humidity.value);
+    }
+    if (bloomSeason.present) {
+      map['bloom_season'] = Variable<String>(bloomSeason.value);
+    }
+    if (wateringNotes.present) {
+      map['watering_notes'] = Variable<String>(wateringNotes.value);
+    }
+    if (fertilizingNotes.present) {
+      map['fertilizing_notes'] = Variable<String>(fertilizingNotes.value);
+    }
+    if (difficultyLevel.present) {
+      map['difficulty_level'] = Variable<String>(difficultyLevel.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SpeciesProfilesCompanion(')
+          ..write('id: $id, ')
+          ..write('commonName: $commonName, ')
+          ..write('genus: $genus, ')
+          ..write('species: $species, ')
+          ..write('idealLuxMin: $idealLuxMin, ')
+          ..write('idealLuxMax: $idealLuxMax, ')
+          ..write('tempMinF: $tempMinF, ')
+          ..write('tempMaxF: $tempMaxF, ')
+          ..write('tempNightDropF: $tempNightDropF, ')
+          ..write('humidity: $humidity, ')
+          ..write('bloomSeason: $bloomSeason, ')
+          ..write('wateringNotes: $wateringNotes, ')
+          ..write('fertilizingNotes: $fertilizingNotes, ')
+          ..write('difficultyLevel: $difficultyLevel, ')
+          ..write('description: $description')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $GrowingLocationsTable extends GrowingLocations
+    with TableInfo<$GrowingLocationsTable, GrowingLocation> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $GrowingLocationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _descriptionMeta =
+      const VerificationMeta('description');
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+      'description', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _latestLuxReadingMeta =
+      const VerificationMeta('latestLuxReading');
+  @override
+  late final GeneratedColumn<double> latestLuxReading = GeneratedColumn<double>(
+      'latest_lux_reading', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _lastReadingAtMeta =
+      const VerificationMeta('lastReadingAt');
+  @override
+  late final GeneratedColumn<DateTime> lastReadingAt =
+      GeneratedColumn<DateTime>('last_reading_at', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, name, description, latestLuxReading, lastReadingAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'growing_locations';
+  @override
+  VerificationContext validateIntegrity(Insertable<GrowingLocation> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+          _descriptionMeta,
+          description.isAcceptableOrUnknown(
+              data['description']!, _descriptionMeta));
+    }
+    if (data.containsKey('latest_lux_reading')) {
+      context.handle(
+          _latestLuxReadingMeta,
+          latestLuxReading.isAcceptableOrUnknown(
+              data['latest_lux_reading']!, _latestLuxReadingMeta));
+    }
+    if (data.containsKey('last_reading_at')) {
+      context.handle(
+          _lastReadingAtMeta,
+          lastReadingAt.isAcceptableOrUnknown(
+              data['last_reading_at']!, _lastReadingAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  GrowingLocation map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return GrowingLocation(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      description: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}description']),
+      latestLuxReading: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}latest_lux_reading']),
+      lastReadingAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}last_reading_at']),
+    );
+  }
+
+  @override
+  $GrowingLocationsTable createAlias(String alias) {
+    return $GrowingLocationsTable(attachedDatabase, alias);
+  }
+}
+
+class GrowingLocation extends DataClass implements Insertable<GrowingLocation> {
+  final int id;
+  final String name;
+  final String? description;
+  final double? latestLuxReading;
+  final DateTime? lastReadingAt;
+  const GrowingLocation(
+      {required this.id,
+      required this.name,
+      this.description,
+      this.latestLuxReading,
+      this.lastReadingAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    if (!nullToAbsent || latestLuxReading != null) {
+      map['latest_lux_reading'] = Variable<double>(latestLuxReading);
+    }
+    if (!nullToAbsent || lastReadingAt != null) {
+      map['last_reading_at'] = Variable<DateTime>(lastReadingAt);
+    }
+    return map;
+  }
+
+  GrowingLocationsCompanion toCompanion(bool nullToAbsent) {
+    return GrowingLocationsCompanion(
+      id: Value(id),
+      name: Value(name),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      latestLuxReading: latestLuxReading == null && nullToAbsent
+          ? const Value.absent()
+          : Value(latestLuxReading),
+      lastReadingAt: lastReadingAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastReadingAt),
+    );
+  }
+
+  factory GrowingLocation.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return GrowingLocation(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      description: serializer.fromJson<String?>(json['description']),
+      latestLuxReading: serializer.fromJson<double?>(json['latestLuxReading']),
+      lastReadingAt: serializer.fromJson<DateTime?>(json['lastReadingAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'description': serializer.toJson<String?>(description),
+      'latestLuxReading': serializer.toJson<double?>(latestLuxReading),
+      'lastReadingAt': serializer.toJson<DateTime?>(lastReadingAt),
+    };
+  }
+
+  GrowingLocation copyWith(
+          {int? id,
+          String? name,
+          Value<String?> description = const Value.absent(),
+          Value<double?> latestLuxReading = const Value.absent(),
+          Value<DateTime?> lastReadingAt = const Value.absent()}) =>
+      GrowingLocation(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        description: description.present ? description.value : this.description,
+        latestLuxReading: latestLuxReading.present
+            ? latestLuxReading.value
+            : this.latestLuxReading,
+        lastReadingAt:
+            lastReadingAt.present ? lastReadingAt.value : this.lastReadingAt,
+      );
+  @override
+  String toString() {
+    return (StringBuffer('GrowingLocation(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('latestLuxReading: $latestLuxReading, ')
+          ..write('lastReadingAt: $lastReadingAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, name, description, latestLuxReading, lastReadingAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is GrowingLocation &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.description == this.description &&
+          other.latestLuxReading == this.latestLuxReading &&
+          other.lastReadingAt == this.lastReadingAt);
+}
+
+class GrowingLocationsCompanion extends UpdateCompanion<GrowingLocation> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<String?> description;
+  final Value<double?> latestLuxReading;
+  final Value<DateTime?> lastReadingAt;
+  const GrowingLocationsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.description = const Value.absent(),
+    this.latestLuxReading = const Value.absent(),
+    this.lastReadingAt = const Value.absent(),
+  });
+  GrowingLocationsCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    this.description = const Value.absent(),
+    this.latestLuxReading = const Value.absent(),
+    this.lastReadingAt = const Value.absent(),
+  }) : name = Value(name);
+  static Insertable<GrowingLocation> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<String>? description,
+    Expression<double>? latestLuxReading,
+    Expression<DateTime>? lastReadingAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (description != null) 'description': description,
+      if (latestLuxReading != null) 'latest_lux_reading': latestLuxReading,
+      if (lastReadingAt != null) 'last_reading_at': lastReadingAt,
+    });
+  }
+
+  GrowingLocationsCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? name,
+      Value<String?>? description,
+      Value<double?>? latestLuxReading,
+      Value<DateTime?>? lastReadingAt}) {
+    return GrowingLocationsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      latestLuxReading: latestLuxReading ?? this.latestLuxReading,
+      lastReadingAt: lastReadingAt ?? this.lastReadingAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (latestLuxReading.present) {
+      map['latest_lux_reading'] = Variable<double>(latestLuxReading.value);
+    }
+    if (lastReadingAt.present) {
+      map['last_reading_at'] = Variable<DateTime>(lastReadingAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('GrowingLocationsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('latestLuxReading: $latestLuxReading, ')
+          ..write('lastReadingAt: $lastReadingAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $MilestonesTable extends Milestones
+    with TableInfo<$MilestonesTable, Milestone> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $MilestonesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _orchidIdMeta =
+      const VerificationMeta('orchidId');
+  @override
+  late final GeneratedColumn<int> orchidId = GeneratedColumn<int>(
+      'orchid_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES orchids (id)'));
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+      'type', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _messageMeta =
+      const VerificationMeta('message');
+  @override
+  late final GeneratedColumn<String> message = GeneratedColumn<String>(
+      'message', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _triggeredAtMeta =
+      const VerificationMeta('triggeredAt');
+  @override
+  late final GeneratedColumn<DateTime> triggeredAt = GeneratedColumn<DateTime>(
+      'triggered_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _dismissedMeta =
+      const VerificationMeta('dismissed');
+  @override
+  late final GeneratedColumn<bool> dismissed = GeneratedColumn<bool>(
+      'dismissed', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("dismissed" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, orchidId, type, message, triggeredAt, dismissed];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'milestones';
+  @override
+  VerificationContext validateIntegrity(Insertable<Milestone> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('orchid_id')) {
+      context.handle(_orchidIdMeta,
+          orchidId.isAcceptableOrUnknown(data['orchid_id']!, _orchidIdMeta));
+    } else if (isInserting) {
+      context.missing(_orchidIdMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+          _typeMeta, type.isAcceptableOrUnknown(data['type']!, _typeMeta));
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('message')) {
+      context.handle(_messageMeta,
+          message.isAcceptableOrUnknown(data['message']!, _messageMeta));
+    } else if (isInserting) {
+      context.missing(_messageMeta);
+    }
+    if (data.containsKey('triggered_at')) {
+      context.handle(
+          _triggeredAtMeta,
+          triggeredAt.isAcceptableOrUnknown(
+              data['triggered_at']!, _triggeredAtMeta));
+    } else if (isInserting) {
+      context.missing(_triggeredAtMeta);
+    }
+    if (data.containsKey('dismissed')) {
+      context.handle(_dismissedMeta,
+          dismissed.isAcceptableOrUnknown(data['dismissed']!, _dismissedMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Milestone map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Milestone(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      orchidId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}orchid_id'])!,
+      type: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}type'])!,
+      message: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}message'])!,
+      triggeredAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}triggered_at'])!,
+      dismissed: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}dismissed'])!,
+    );
+  }
+
+  @override
+  $MilestonesTable createAlias(String alias) {
+    return $MilestonesTable(attachedDatabase, alias);
+  }
+}
+
+class Milestone extends DataClass implements Insertable<Milestone> {
+  final int id;
+  final int orchidId;
+  final String type;
+  final String message;
+  final DateTime triggeredAt;
+  final bool dismissed;
+  const Milestone(
+      {required this.id,
+      required this.orchidId,
+      required this.type,
+      required this.message,
+      required this.triggeredAt,
+      required this.dismissed});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['orchid_id'] = Variable<int>(orchidId);
+    map['type'] = Variable<String>(type);
+    map['message'] = Variable<String>(message);
+    map['triggered_at'] = Variable<DateTime>(triggeredAt);
+    map['dismissed'] = Variable<bool>(dismissed);
+    return map;
+  }
+
+  MilestonesCompanion toCompanion(bool nullToAbsent) {
+    return MilestonesCompanion(
+      id: Value(id),
+      orchidId: Value(orchidId),
+      type: Value(type),
+      message: Value(message),
+      triggeredAt: Value(triggeredAt),
+      dismissed: Value(dismissed),
+    );
+  }
+
+  factory Milestone.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Milestone(
+      id: serializer.fromJson<int>(json['id']),
+      orchidId: serializer.fromJson<int>(json['orchidId']),
+      type: serializer.fromJson<String>(json['type']),
+      message: serializer.fromJson<String>(json['message']),
+      triggeredAt: serializer.fromJson<DateTime>(json['triggeredAt']),
+      dismissed: serializer.fromJson<bool>(json['dismissed']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'orchidId': serializer.toJson<int>(orchidId),
+      'type': serializer.toJson<String>(type),
+      'message': serializer.toJson<String>(message),
+      'triggeredAt': serializer.toJson<DateTime>(triggeredAt),
+      'dismissed': serializer.toJson<bool>(dismissed),
+    };
+  }
+
+  Milestone copyWith(
+          {int? id,
+          int? orchidId,
+          String? type,
+          String? message,
+          DateTime? triggeredAt,
+          bool? dismissed}) =>
+      Milestone(
+        id: id ?? this.id,
+        orchidId: orchidId ?? this.orchidId,
+        type: type ?? this.type,
+        message: message ?? this.message,
+        triggeredAt: triggeredAt ?? this.triggeredAt,
+        dismissed: dismissed ?? this.dismissed,
+      );
+  @override
+  String toString() {
+    return (StringBuffer('Milestone(')
+          ..write('id: $id, ')
+          ..write('orchidId: $orchidId, ')
+          ..write('type: $type, ')
+          ..write('message: $message, ')
+          ..write('triggeredAt: $triggeredAt, ')
+          ..write('dismissed: $dismissed')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, orchidId, type, message, triggeredAt, dismissed);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Milestone &&
+          other.id == this.id &&
+          other.orchidId == this.orchidId &&
+          other.type == this.type &&
+          other.message == this.message &&
+          other.triggeredAt == this.triggeredAt &&
+          other.dismissed == this.dismissed);
+}
+
+class MilestonesCompanion extends UpdateCompanion<Milestone> {
+  final Value<int> id;
+  final Value<int> orchidId;
+  final Value<String> type;
+  final Value<String> message;
+  final Value<DateTime> triggeredAt;
+  final Value<bool> dismissed;
+  const MilestonesCompanion({
+    this.id = const Value.absent(),
+    this.orchidId = const Value.absent(),
+    this.type = const Value.absent(),
+    this.message = const Value.absent(),
+    this.triggeredAt = const Value.absent(),
+    this.dismissed = const Value.absent(),
+  });
+  MilestonesCompanion.insert({
+    this.id = const Value.absent(),
+    required int orchidId,
+    required String type,
+    required String message,
+    required DateTime triggeredAt,
+    this.dismissed = const Value.absent(),
+  })  : orchidId = Value(orchidId),
+        type = Value(type),
+        message = Value(message),
+        triggeredAt = Value(triggeredAt);
+  static Insertable<Milestone> custom({
+    Expression<int>? id,
+    Expression<int>? orchidId,
+    Expression<String>? type,
+    Expression<String>? message,
+    Expression<DateTime>? triggeredAt,
+    Expression<bool>? dismissed,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (orchidId != null) 'orchid_id': orchidId,
+      if (type != null) 'type': type,
+      if (message != null) 'message': message,
+      if (triggeredAt != null) 'triggered_at': triggeredAt,
+      if (dismissed != null) 'dismissed': dismissed,
+    });
+  }
+
+  MilestonesCompanion copyWith(
+      {Value<int>? id,
+      Value<int>? orchidId,
+      Value<String>? type,
+      Value<String>? message,
+      Value<DateTime>? triggeredAt,
+      Value<bool>? dismissed}) {
+    return MilestonesCompanion(
+      id: id ?? this.id,
+      orchidId: orchidId ?? this.orchidId,
+      type: type ?? this.type,
+      message: message ?? this.message,
+      triggeredAt: triggeredAt ?? this.triggeredAt,
+      dismissed: dismissed ?? this.dismissed,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (orchidId.present) {
+      map['orchid_id'] = Variable<int>(orchidId.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (message.present) {
+      map['message'] = Variable<String>(message.value);
+    }
+    if (triggeredAt.present) {
+      map['triggered_at'] = Variable<DateTime>(triggeredAt.value);
+    }
+    if (dismissed.present) {
+      map['dismissed'] = Variable<bool>(dismissed.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MilestonesCompanion(')
+          ..write('id: $id, ')
+          ..write('orchidId: $orchidId, ')
+          ..write('type: $type, ')
+          ..write('message: $message, ')
+          ..write('triggeredAt: $triggeredAt, ')
+          ..write('dismissed: $dismissed')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   _$AppDatabaseManager get managers => _$AppDatabaseManager(this);
@@ -2499,6 +4742,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SoakSessionsTable soakSessions = $SoakSessionsTable(this);
   late final $SoakSessionTasksTable soakSessionTasks =
       $SoakSessionTasksTable(this);
+  late final $BloomLogsTable bloomLogs = $BloomLogsTable(this);
+  late final $PhotoJournalTable photoJournal = $PhotoJournalTable(this);
+  late final $SpeciesProfilesTable speciesProfiles =
+      $SpeciesProfilesTable(this);
+  late final $GrowingLocationsTable growingLocations =
+      $GrowingLocationsTable(this);
+  late final $MilestonesTable milestones = $MilestonesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2510,7 +4760,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         lightReadings,
         settings,
         soakSessions,
-        soakSessionTasks
+        soakSessionTasks,
+        bloomLogs,
+        photoJournal,
+        speciesProfiles,
+        growingLocations,
+        milestones
       ];
 }
 
@@ -2525,6 +4780,11 @@ typedef $$OrchidsTableInsertCompanionBuilder = OrchidsCompanion Function({
   Value<DateTime> createdAt,
   Value<bool> isDemo,
   Value<int> soakDurationMinutes,
+  Value<BloomStage?> currentBloomStage,
+  Value<DateTime?> lastPotted,
+  Value<bool> isRescue,
+  Value<int?> speciesProfileId,
+  Value<int?> growingLocationId,
 });
 typedef $$OrchidsTableUpdateCompanionBuilder = OrchidsCompanion Function({
   Value<int> id,
@@ -2537,6 +4797,11 @@ typedef $$OrchidsTableUpdateCompanionBuilder = OrchidsCompanion Function({
   Value<DateTime> createdAt,
   Value<bool> isDemo,
   Value<int> soakDurationMinutes,
+  Value<BloomStage?> currentBloomStage,
+  Value<DateTime?> lastPotted,
+  Value<bool> isRescue,
+  Value<int?> speciesProfileId,
+  Value<int?> growingLocationId,
 });
 
 class $$OrchidsTableTableManager extends RootTableManager<
@@ -2568,6 +4833,11 @@ class $$OrchidsTableTableManager extends RootTableManager<
             Value<DateTime> createdAt = const Value.absent(),
             Value<bool> isDemo = const Value.absent(),
             Value<int> soakDurationMinutes = const Value.absent(),
+            Value<BloomStage?> currentBloomStage = const Value.absent(),
+            Value<DateTime?> lastPotted = const Value.absent(),
+            Value<bool> isRescue = const Value.absent(),
+            Value<int?> speciesProfileId = const Value.absent(),
+            Value<int?> growingLocationId = const Value.absent(),
           }) =>
               OrchidsCompanion(
             id: id,
@@ -2580,6 +4850,11 @@ class $$OrchidsTableTableManager extends RootTableManager<
             createdAt: createdAt,
             isDemo: isDemo,
             soakDurationMinutes: soakDurationMinutes,
+            currentBloomStage: currentBloomStage,
+            lastPotted: lastPotted,
+            isRescue: isRescue,
+            speciesProfileId: speciesProfileId,
+            growingLocationId: growingLocationId,
           ),
           getInsertCompanionBuilder: ({
             Value<int> id = const Value.absent(),
@@ -2592,6 +4867,11 @@ class $$OrchidsTableTableManager extends RootTableManager<
             Value<DateTime> createdAt = const Value.absent(),
             Value<bool> isDemo = const Value.absent(),
             Value<int> soakDurationMinutes = const Value.absent(),
+            Value<BloomStage?> currentBloomStage = const Value.absent(),
+            Value<DateTime?> lastPotted = const Value.absent(),
+            Value<bool> isRescue = const Value.absent(),
+            Value<int?> speciesProfileId = const Value.absent(),
+            Value<int?> growingLocationId = const Value.absent(),
           }) =>
               OrchidsCompanion.insert(
             id: id,
@@ -2604,6 +4884,11 @@ class $$OrchidsTableTableManager extends RootTableManager<
             createdAt: createdAt,
             isDemo: isDemo,
             soakDurationMinutes: soakDurationMinutes,
+            currentBloomStage: currentBloomStage,
+            lastPotted: lastPotted,
+            isRescue: isRescue,
+            speciesProfileId: speciesProfileId,
+            growingLocationId: growingLocationId,
           ),
         ));
 }
@@ -2673,6 +4958,33 @@ class $$OrchidsTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
+  ColumnWithTypeConverterFilters<BloomStage?, BloomStage, String>
+      get currentBloomStage => $state.composableBuilder(
+          column: $state.table.currentBloomStage,
+          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
+              column,
+              joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get lastPotted => $state.composableBuilder(
+      column: $state.table.lastPotted,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<bool> get isRescue => $state.composableBuilder(
+      column: $state.table.isRescue,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get speciesProfileId => $state.composableBuilder(
+      column: $state.table.speciesProfileId,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get growingLocationId => $state.composableBuilder(
+      column: $state.table.growingLocationId,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
   ComposableFilter careTasksRefs(
       ComposableFilter Function($$CareTasksTableFilterComposer f) f) {
     final $$CareTasksTableFilterComposer composer = $state.composerBuilder(
@@ -2723,6 +5035,45 @@ class $$OrchidsTableFilterComposer
             builder: (joinBuilder, parentComposers) =>
                 $$SoakSessionTasksTableFilterComposer(ComposerState($state.db,
                     $state.db.soakSessionTasks, joinBuilder, parentComposers)));
+    return f(composer);
+  }
+
+  ComposableFilter bloomLogsRefs(
+      ComposableFilter Function($$BloomLogsTableFilterComposer f) f) {
+    final $$BloomLogsTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $state.db.bloomLogs,
+        getReferencedColumn: (t) => t.orchidId,
+        builder: (joinBuilder, parentComposers) =>
+            $$BloomLogsTableFilterComposer(ComposerState(
+                $state.db, $state.db.bloomLogs, joinBuilder, parentComposers)));
+    return f(composer);
+  }
+
+  ComposableFilter photoJournalRefs(
+      ComposableFilter Function($$PhotoJournalTableFilterComposer f) f) {
+    final $$PhotoJournalTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $state.db.photoJournal,
+        getReferencedColumn: (t) => t.orchidId,
+        builder: (joinBuilder, parentComposers) =>
+            $$PhotoJournalTableFilterComposer(ComposerState($state.db,
+                $state.db.photoJournal, joinBuilder, parentComposers)));
+    return f(composer);
+  }
+
+  ComposableFilter milestonesRefs(
+      ComposableFilter Function($$MilestonesTableFilterComposer f) f) {
+    final $$MilestonesTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $state.db.milestones,
+        getReferencedColumn: (t) => t.orchidId,
+        builder: (joinBuilder, parentComposers) =>
+            $$MilestonesTableFilterComposer(ComposerState($state.db,
+                $state.db.milestones, joinBuilder, parentComposers)));
     return f(composer);
   }
 }
@@ -2777,6 +5128,31 @@ class $$OrchidsTableOrderingComposer
 
   ColumnOrderings<int> get soakDurationMinutes => $state.composableBuilder(
       column: $state.table.soakDurationMinutes,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get currentBloomStage => $state.composableBuilder(
+      column: $state.table.currentBloomStage,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get lastPotted => $state.composableBuilder(
+      column: $state.table.lastPotted,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<bool> get isRescue => $state.composableBuilder(
+      column: $state.table.isRescue,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get speciesProfileId => $state.composableBuilder(
+      column: $state.table.speciesProfileId,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get growingLocationId => $state.composableBuilder(
+      column: $state.table.growingLocationId,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 }
@@ -3830,6 +6206,944 @@ class $$SoakSessionTasksTableOrderingComposer
   }
 }
 
+typedef $$BloomLogsTableInsertCompanionBuilder = BloomLogsCompanion Function({
+  Value<int> id,
+  required int orchidId,
+  required BloomStage stage,
+  required DateTime dateLogged,
+  Value<String?> notes,
+  Value<String?> photoPath,
+});
+typedef $$BloomLogsTableUpdateCompanionBuilder = BloomLogsCompanion Function({
+  Value<int> id,
+  Value<int> orchidId,
+  Value<BloomStage> stage,
+  Value<DateTime> dateLogged,
+  Value<String?> notes,
+  Value<String?> photoPath,
+});
+
+class $$BloomLogsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $BloomLogsTable,
+    BloomLog,
+    $$BloomLogsTableFilterComposer,
+    $$BloomLogsTableOrderingComposer,
+    $$BloomLogsTableProcessedTableManager,
+    $$BloomLogsTableInsertCompanionBuilder,
+    $$BloomLogsTableUpdateCompanionBuilder> {
+  $$BloomLogsTableTableManager(_$AppDatabase db, $BloomLogsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          filteringComposer:
+              $$BloomLogsTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$BloomLogsTableOrderingComposer(ComposerState(db, table)),
+          getChildManagerBuilder: (p) =>
+              $$BloomLogsTableProcessedTableManager(p),
+          getUpdateCompanionBuilder: ({
+            Value<int> id = const Value.absent(),
+            Value<int> orchidId = const Value.absent(),
+            Value<BloomStage> stage = const Value.absent(),
+            Value<DateTime> dateLogged = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            Value<String?> photoPath = const Value.absent(),
+          }) =>
+              BloomLogsCompanion(
+            id: id,
+            orchidId: orchidId,
+            stage: stage,
+            dateLogged: dateLogged,
+            notes: notes,
+            photoPath: photoPath,
+          ),
+          getInsertCompanionBuilder: ({
+            Value<int> id = const Value.absent(),
+            required int orchidId,
+            required BloomStage stage,
+            required DateTime dateLogged,
+            Value<String?> notes = const Value.absent(),
+            Value<String?> photoPath = const Value.absent(),
+          }) =>
+              BloomLogsCompanion.insert(
+            id: id,
+            orchidId: orchidId,
+            stage: stage,
+            dateLogged: dateLogged,
+            notes: notes,
+            photoPath: photoPath,
+          ),
+        ));
+}
+
+class $$BloomLogsTableProcessedTableManager extends ProcessedTableManager<
+    _$AppDatabase,
+    $BloomLogsTable,
+    BloomLog,
+    $$BloomLogsTableFilterComposer,
+    $$BloomLogsTableOrderingComposer,
+    $$BloomLogsTableProcessedTableManager,
+    $$BloomLogsTableInsertCompanionBuilder,
+    $$BloomLogsTableUpdateCompanionBuilder> {
+  $$BloomLogsTableProcessedTableManager(super.$state);
+}
+
+class $$BloomLogsTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $BloomLogsTable> {
+  $$BloomLogsTableFilterComposer(super.$state);
+  ColumnFilters<int> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnWithTypeConverterFilters<BloomStage, BloomStage, String> get stage =>
+      $state.composableBuilder(
+          column: $state.table.stage,
+          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
+              column,
+              joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get dateLogged => $state.composableBuilder(
+      column: $state.table.dateLogged,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get notes => $state.composableBuilder(
+      column: $state.table.notes,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get photoPath => $state.composableBuilder(
+      column: $state.table.photoPath,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$OrchidsTableFilterComposer get orchidId {
+    final $$OrchidsTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.orchidId,
+        referencedTable: $state.db.orchids,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) => $$OrchidsTableFilterComposer(
+            ComposerState(
+                $state.db, $state.db.orchids, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
+class $$BloomLogsTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $BloomLogsTable> {
+  $$BloomLogsTableOrderingComposer(super.$state);
+  ColumnOrderings<int> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get stage => $state.composableBuilder(
+      column: $state.table.stage,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get dateLogged => $state.composableBuilder(
+      column: $state.table.dateLogged,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get notes => $state.composableBuilder(
+      column: $state.table.notes,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get photoPath => $state.composableBuilder(
+      column: $state.table.photoPath,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$OrchidsTableOrderingComposer get orchidId {
+    final $$OrchidsTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.orchidId,
+        referencedTable: $state.db.orchids,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$OrchidsTableOrderingComposer(ComposerState(
+                $state.db, $state.db.orchids, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
+typedef $$PhotoJournalTableInsertCompanionBuilder = PhotoJournalCompanion
+    Function({
+  Value<int> id,
+  required int orchidId,
+  required String photoPath,
+  required DateTime dateTaken,
+  Value<String?> note,
+  required PhotoTag tag,
+});
+typedef $$PhotoJournalTableUpdateCompanionBuilder = PhotoJournalCompanion
+    Function({
+  Value<int> id,
+  Value<int> orchidId,
+  Value<String> photoPath,
+  Value<DateTime> dateTaken,
+  Value<String?> note,
+  Value<PhotoTag> tag,
+});
+
+class $$PhotoJournalTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $PhotoJournalTable,
+    PhotoJournalData,
+    $$PhotoJournalTableFilterComposer,
+    $$PhotoJournalTableOrderingComposer,
+    $$PhotoJournalTableProcessedTableManager,
+    $$PhotoJournalTableInsertCompanionBuilder,
+    $$PhotoJournalTableUpdateCompanionBuilder> {
+  $$PhotoJournalTableTableManager(_$AppDatabase db, $PhotoJournalTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          filteringComposer:
+              $$PhotoJournalTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$PhotoJournalTableOrderingComposer(ComposerState(db, table)),
+          getChildManagerBuilder: (p) =>
+              $$PhotoJournalTableProcessedTableManager(p),
+          getUpdateCompanionBuilder: ({
+            Value<int> id = const Value.absent(),
+            Value<int> orchidId = const Value.absent(),
+            Value<String> photoPath = const Value.absent(),
+            Value<DateTime> dateTaken = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            Value<PhotoTag> tag = const Value.absent(),
+          }) =>
+              PhotoJournalCompanion(
+            id: id,
+            orchidId: orchidId,
+            photoPath: photoPath,
+            dateTaken: dateTaken,
+            note: note,
+            tag: tag,
+          ),
+          getInsertCompanionBuilder: ({
+            Value<int> id = const Value.absent(),
+            required int orchidId,
+            required String photoPath,
+            required DateTime dateTaken,
+            Value<String?> note = const Value.absent(),
+            required PhotoTag tag,
+          }) =>
+              PhotoJournalCompanion.insert(
+            id: id,
+            orchidId: orchidId,
+            photoPath: photoPath,
+            dateTaken: dateTaken,
+            note: note,
+            tag: tag,
+          ),
+        ));
+}
+
+class $$PhotoJournalTableProcessedTableManager extends ProcessedTableManager<
+    _$AppDatabase,
+    $PhotoJournalTable,
+    PhotoJournalData,
+    $$PhotoJournalTableFilterComposer,
+    $$PhotoJournalTableOrderingComposer,
+    $$PhotoJournalTableProcessedTableManager,
+    $$PhotoJournalTableInsertCompanionBuilder,
+    $$PhotoJournalTableUpdateCompanionBuilder> {
+  $$PhotoJournalTableProcessedTableManager(super.$state);
+}
+
+class $$PhotoJournalTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $PhotoJournalTable> {
+  $$PhotoJournalTableFilterComposer(super.$state);
+  ColumnFilters<int> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get photoPath => $state.composableBuilder(
+      column: $state.table.photoPath,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get dateTaken => $state.composableBuilder(
+      column: $state.table.dateTaken,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get note => $state.composableBuilder(
+      column: $state.table.note,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnWithTypeConverterFilters<PhotoTag, PhotoTag, String> get tag =>
+      $state.composableBuilder(
+          column: $state.table.tag,
+          builder: (column, joinBuilders) => ColumnWithTypeConverterFilters(
+              column,
+              joinBuilders: joinBuilders));
+
+  $$OrchidsTableFilterComposer get orchidId {
+    final $$OrchidsTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.orchidId,
+        referencedTable: $state.db.orchids,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) => $$OrchidsTableFilterComposer(
+            ComposerState(
+                $state.db, $state.db.orchids, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
+class $$PhotoJournalTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $PhotoJournalTable> {
+  $$PhotoJournalTableOrderingComposer(super.$state);
+  ColumnOrderings<int> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get photoPath => $state.composableBuilder(
+      column: $state.table.photoPath,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get dateTaken => $state.composableBuilder(
+      column: $state.table.dateTaken,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get note => $state.composableBuilder(
+      column: $state.table.note,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get tag => $state.composableBuilder(
+      column: $state.table.tag,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$OrchidsTableOrderingComposer get orchidId {
+    final $$OrchidsTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.orchidId,
+        referencedTable: $state.db.orchids,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$OrchidsTableOrderingComposer(ComposerState(
+                $state.db, $state.db.orchids, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
+typedef $$SpeciesProfilesTableInsertCompanionBuilder = SpeciesProfilesCompanion
+    Function({
+  Value<int> id,
+  required String commonName,
+  required String genus,
+  Value<String?> species,
+  Value<int?> idealLuxMin,
+  Value<int?> idealLuxMax,
+  Value<int?> tempMinF,
+  Value<int?> tempMaxF,
+  Value<int?> tempNightDropF,
+  Value<String?> humidity,
+  Value<String?> bloomSeason,
+  Value<String?> wateringNotes,
+  Value<String?> fertilizingNotes,
+  Value<String?> difficultyLevel,
+  Value<String?> description,
+});
+typedef $$SpeciesProfilesTableUpdateCompanionBuilder = SpeciesProfilesCompanion
+    Function({
+  Value<int> id,
+  Value<String> commonName,
+  Value<String> genus,
+  Value<String?> species,
+  Value<int?> idealLuxMin,
+  Value<int?> idealLuxMax,
+  Value<int?> tempMinF,
+  Value<int?> tempMaxF,
+  Value<int?> tempNightDropF,
+  Value<String?> humidity,
+  Value<String?> bloomSeason,
+  Value<String?> wateringNotes,
+  Value<String?> fertilizingNotes,
+  Value<String?> difficultyLevel,
+  Value<String?> description,
+});
+
+class $$SpeciesProfilesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $SpeciesProfilesTable,
+    SpeciesProfile,
+    $$SpeciesProfilesTableFilterComposer,
+    $$SpeciesProfilesTableOrderingComposer,
+    $$SpeciesProfilesTableProcessedTableManager,
+    $$SpeciesProfilesTableInsertCompanionBuilder,
+    $$SpeciesProfilesTableUpdateCompanionBuilder> {
+  $$SpeciesProfilesTableTableManager(
+      _$AppDatabase db, $SpeciesProfilesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          filteringComposer:
+              $$SpeciesProfilesTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$SpeciesProfilesTableOrderingComposer(ComposerState(db, table)),
+          getChildManagerBuilder: (p) =>
+              $$SpeciesProfilesTableProcessedTableManager(p),
+          getUpdateCompanionBuilder: ({
+            Value<int> id = const Value.absent(),
+            Value<String> commonName = const Value.absent(),
+            Value<String> genus = const Value.absent(),
+            Value<String?> species = const Value.absent(),
+            Value<int?> idealLuxMin = const Value.absent(),
+            Value<int?> idealLuxMax = const Value.absent(),
+            Value<int?> tempMinF = const Value.absent(),
+            Value<int?> tempMaxF = const Value.absent(),
+            Value<int?> tempNightDropF = const Value.absent(),
+            Value<String?> humidity = const Value.absent(),
+            Value<String?> bloomSeason = const Value.absent(),
+            Value<String?> wateringNotes = const Value.absent(),
+            Value<String?> fertilizingNotes = const Value.absent(),
+            Value<String?> difficultyLevel = const Value.absent(),
+            Value<String?> description = const Value.absent(),
+          }) =>
+              SpeciesProfilesCompanion(
+            id: id,
+            commonName: commonName,
+            genus: genus,
+            species: species,
+            idealLuxMin: idealLuxMin,
+            idealLuxMax: idealLuxMax,
+            tempMinF: tempMinF,
+            tempMaxF: tempMaxF,
+            tempNightDropF: tempNightDropF,
+            humidity: humidity,
+            bloomSeason: bloomSeason,
+            wateringNotes: wateringNotes,
+            fertilizingNotes: fertilizingNotes,
+            difficultyLevel: difficultyLevel,
+            description: description,
+          ),
+          getInsertCompanionBuilder: ({
+            Value<int> id = const Value.absent(),
+            required String commonName,
+            required String genus,
+            Value<String?> species = const Value.absent(),
+            Value<int?> idealLuxMin = const Value.absent(),
+            Value<int?> idealLuxMax = const Value.absent(),
+            Value<int?> tempMinF = const Value.absent(),
+            Value<int?> tempMaxF = const Value.absent(),
+            Value<int?> tempNightDropF = const Value.absent(),
+            Value<String?> humidity = const Value.absent(),
+            Value<String?> bloomSeason = const Value.absent(),
+            Value<String?> wateringNotes = const Value.absent(),
+            Value<String?> fertilizingNotes = const Value.absent(),
+            Value<String?> difficultyLevel = const Value.absent(),
+            Value<String?> description = const Value.absent(),
+          }) =>
+              SpeciesProfilesCompanion.insert(
+            id: id,
+            commonName: commonName,
+            genus: genus,
+            species: species,
+            idealLuxMin: idealLuxMin,
+            idealLuxMax: idealLuxMax,
+            tempMinF: tempMinF,
+            tempMaxF: tempMaxF,
+            tempNightDropF: tempNightDropF,
+            humidity: humidity,
+            bloomSeason: bloomSeason,
+            wateringNotes: wateringNotes,
+            fertilizingNotes: fertilizingNotes,
+            difficultyLevel: difficultyLevel,
+            description: description,
+          ),
+        ));
+}
+
+class $$SpeciesProfilesTableProcessedTableManager extends ProcessedTableManager<
+    _$AppDatabase,
+    $SpeciesProfilesTable,
+    SpeciesProfile,
+    $$SpeciesProfilesTableFilterComposer,
+    $$SpeciesProfilesTableOrderingComposer,
+    $$SpeciesProfilesTableProcessedTableManager,
+    $$SpeciesProfilesTableInsertCompanionBuilder,
+    $$SpeciesProfilesTableUpdateCompanionBuilder> {
+  $$SpeciesProfilesTableProcessedTableManager(super.$state);
+}
+
+class $$SpeciesProfilesTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $SpeciesProfilesTable> {
+  $$SpeciesProfilesTableFilterComposer(super.$state);
+  ColumnFilters<int> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get commonName => $state.composableBuilder(
+      column: $state.table.commonName,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get genus => $state.composableBuilder(
+      column: $state.table.genus,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get species => $state.composableBuilder(
+      column: $state.table.species,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get idealLuxMin => $state.composableBuilder(
+      column: $state.table.idealLuxMin,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get idealLuxMax => $state.composableBuilder(
+      column: $state.table.idealLuxMax,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get tempMinF => $state.composableBuilder(
+      column: $state.table.tempMinF,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get tempMaxF => $state.composableBuilder(
+      column: $state.table.tempMaxF,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get tempNightDropF => $state.composableBuilder(
+      column: $state.table.tempNightDropF,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get humidity => $state.composableBuilder(
+      column: $state.table.humidity,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get bloomSeason => $state.composableBuilder(
+      column: $state.table.bloomSeason,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get wateringNotes => $state.composableBuilder(
+      column: $state.table.wateringNotes,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get fertilizingNotes => $state.composableBuilder(
+      column: $state.table.fertilizingNotes,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get difficultyLevel => $state.composableBuilder(
+      column: $state.table.difficultyLevel,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get description => $state.composableBuilder(
+      column: $state.table.description,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+}
+
+class $$SpeciesProfilesTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $SpeciesProfilesTable> {
+  $$SpeciesProfilesTableOrderingComposer(super.$state);
+  ColumnOrderings<int> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get commonName => $state.composableBuilder(
+      column: $state.table.commonName,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get genus => $state.composableBuilder(
+      column: $state.table.genus,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get species => $state.composableBuilder(
+      column: $state.table.species,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get idealLuxMin => $state.composableBuilder(
+      column: $state.table.idealLuxMin,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get idealLuxMax => $state.composableBuilder(
+      column: $state.table.idealLuxMax,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get tempMinF => $state.composableBuilder(
+      column: $state.table.tempMinF,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get tempMaxF => $state.composableBuilder(
+      column: $state.table.tempMaxF,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get tempNightDropF => $state.composableBuilder(
+      column: $state.table.tempNightDropF,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get humidity => $state.composableBuilder(
+      column: $state.table.humidity,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get bloomSeason => $state.composableBuilder(
+      column: $state.table.bloomSeason,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get wateringNotes => $state.composableBuilder(
+      column: $state.table.wateringNotes,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get fertilizingNotes => $state.composableBuilder(
+      column: $state.table.fertilizingNotes,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get difficultyLevel => $state.composableBuilder(
+      column: $state.table.difficultyLevel,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get description => $state.composableBuilder(
+      column: $state.table.description,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+}
+
+typedef $$GrowingLocationsTableInsertCompanionBuilder
+    = GrowingLocationsCompanion Function({
+  Value<int> id,
+  required String name,
+  Value<String?> description,
+  Value<double?> latestLuxReading,
+  Value<DateTime?> lastReadingAt,
+});
+typedef $$GrowingLocationsTableUpdateCompanionBuilder
+    = GrowingLocationsCompanion Function({
+  Value<int> id,
+  Value<String> name,
+  Value<String?> description,
+  Value<double?> latestLuxReading,
+  Value<DateTime?> lastReadingAt,
+});
+
+class $$GrowingLocationsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $GrowingLocationsTable,
+    GrowingLocation,
+    $$GrowingLocationsTableFilterComposer,
+    $$GrowingLocationsTableOrderingComposer,
+    $$GrowingLocationsTableProcessedTableManager,
+    $$GrowingLocationsTableInsertCompanionBuilder,
+    $$GrowingLocationsTableUpdateCompanionBuilder> {
+  $$GrowingLocationsTableTableManager(
+      _$AppDatabase db, $GrowingLocationsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          filteringComposer:
+              $$GrowingLocationsTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$GrowingLocationsTableOrderingComposer(ComposerState(db, table)),
+          getChildManagerBuilder: (p) =>
+              $$GrowingLocationsTableProcessedTableManager(p),
+          getUpdateCompanionBuilder: ({
+            Value<int> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<String?> description = const Value.absent(),
+            Value<double?> latestLuxReading = const Value.absent(),
+            Value<DateTime?> lastReadingAt = const Value.absent(),
+          }) =>
+              GrowingLocationsCompanion(
+            id: id,
+            name: name,
+            description: description,
+            latestLuxReading: latestLuxReading,
+            lastReadingAt: lastReadingAt,
+          ),
+          getInsertCompanionBuilder: ({
+            Value<int> id = const Value.absent(),
+            required String name,
+            Value<String?> description = const Value.absent(),
+            Value<double?> latestLuxReading = const Value.absent(),
+            Value<DateTime?> lastReadingAt = const Value.absent(),
+          }) =>
+              GrowingLocationsCompanion.insert(
+            id: id,
+            name: name,
+            description: description,
+            latestLuxReading: latestLuxReading,
+            lastReadingAt: lastReadingAt,
+          ),
+        ));
+}
+
+class $$GrowingLocationsTableProcessedTableManager
+    extends ProcessedTableManager<
+        _$AppDatabase,
+        $GrowingLocationsTable,
+        GrowingLocation,
+        $$GrowingLocationsTableFilterComposer,
+        $$GrowingLocationsTableOrderingComposer,
+        $$GrowingLocationsTableProcessedTableManager,
+        $$GrowingLocationsTableInsertCompanionBuilder,
+        $$GrowingLocationsTableUpdateCompanionBuilder> {
+  $$GrowingLocationsTableProcessedTableManager(super.$state);
+}
+
+class $$GrowingLocationsTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $GrowingLocationsTable> {
+  $$GrowingLocationsTableFilterComposer(super.$state);
+  ColumnFilters<int> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get name => $state.composableBuilder(
+      column: $state.table.name,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get description => $state.composableBuilder(
+      column: $state.table.description,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<double> get latestLuxReading => $state.composableBuilder(
+      column: $state.table.latestLuxReading,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get lastReadingAt => $state.composableBuilder(
+      column: $state.table.lastReadingAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+}
+
+class $$GrowingLocationsTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $GrowingLocationsTable> {
+  $$GrowingLocationsTableOrderingComposer(super.$state);
+  ColumnOrderings<int> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get name => $state.composableBuilder(
+      column: $state.table.name,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get description => $state.composableBuilder(
+      column: $state.table.description,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<double> get latestLuxReading => $state.composableBuilder(
+      column: $state.table.latestLuxReading,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get lastReadingAt => $state.composableBuilder(
+      column: $state.table.lastReadingAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+}
+
+typedef $$MilestonesTableInsertCompanionBuilder = MilestonesCompanion Function({
+  Value<int> id,
+  required int orchidId,
+  required String type,
+  required String message,
+  required DateTime triggeredAt,
+  Value<bool> dismissed,
+});
+typedef $$MilestonesTableUpdateCompanionBuilder = MilestonesCompanion Function({
+  Value<int> id,
+  Value<int> orchidId,
+  Value<String> type,
+  Value<String> message,
+  Value<DateTime> triggeredAt,
+  Value<bool> dismissed,
+});
+
+class $$MilestonesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $MilestonesTable,
+    Milestone,
+    $$MilestonesTableFilterComposer,
+    $$MilestonesTableOrderingComposer,
+    $$MilestonesTableProcessedTableManager,
+    $$MilestonesTableInsertCompanionBuilder,
+    $$MilestonesTableUpdateCompanionBuilder> {
+  $$MilestonesTableTableManager(_$AppDatabase db, $MilestonesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          filteringComposer:
+              $$MilestonesTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$MilestonesTableOrderingComposer(ComposerState(db, table)),
+          getChildManagerBuilder: (p) =>
+              $$MilestonesTableProcessedTableManager(p),
+          getUpdateCompanionBuilder: ({
+            Value<int> id = const Value.absent(),
+            Value<int> orchidId = const Value.absent(),
+            Value<String> type = const Value.absent(),
+            Value<String> message = const Value.absent(),
+            Value<DateTime> triggeredAt = const Value.absent(),
+            Value<bool> dismissed = const Value.absent(),
+          }) =>
+              MilestonesCompanion(
+            id: id,
+            orchidId: orchidId,
+            type: type,
+            message: message,
+            triggeredAt: triggeredAt,
+            dismissed: dismissed,
+          ),
+          getInsertCompanionBuilder: ({
+            Value<int> id = const Value.absent(),
+            required int orchidId,
+            required String type,
+            required String message,
+            required DateTime triggeredAt,
+            Value<bool> dismissed = const Value.absent(),
+          }) =>
+              MilestonesCompanion.insert(
+            id: id,
+            orchidId: orchidId,
+            type: type,
+            message: message,
+            triggeredAt: triggeredAt,
+            dismissed: dismissed,
+          ),
+        ));
+}
+
+class $$MilestonesTableProcessedTableManager extends ProcessedTableManager<
+    _$AppDatabase,
+    $MilestonesTable,
+    Milestone,
+    $$MilestonesTableFilterComposer,
+    $$MilestonesTableOrderingComposer,
+    $$MilestonesTableProcessedTableManager,
+    $$MilestonesTableInsertCompanionBuilder,
+    $$MilestonesTableUpdateCompanionBuilder> {
+  $$MilestonesTableProcessedTableManager(super.$state);
+}
+
+class $$MilestonesTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $MilestonesTable> {
+  $$MilestonesTableFilterComposer(super.$state);
+  ColumnFilters<int> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get type => $state.composableBuilder(
+      column: $state.table.type,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get message => $state.composableBuilder(
+      column: $state.table.message,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get triggeredAt => $state.composableBuilder(
+      column: $state.table.triggeredAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<bool> get dismissed => $state.composableBuilder(
+      column: $state.table.dismissed,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$OrchidsTableFilterComposer get orchidId {
+    final $$OrchidsTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.orchidId,
+        referencedTable: $state.db.orchids,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) => $$OrchidsTableFilterComposer(
+            ComposerState(
+                $state.db, $state.db.orchids, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
+class $$MilestonesTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $MilestonesTable> {
+  $$MilestonesTableOrderingComposer(super.$state);
+  ColumnOrderings<int> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get type => $state.composableBuilder(
+      column: $state.table.type,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get message => $state.composableBuilder(
+      column: $state.table.message,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get triggeredAt => $state.composableBuilder(
+      column: $state.table.triggeredAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<bool> get dismissed => $state.composableBuilder(
+      column: $state.table.dismissed,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$OrchidsTableOrderingComposer get orchidId {
+    final $$OrchidsTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.orchidId,
+        referencedTable: $state.db.orchids,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$OrchidsTableOrderingComposer(ComposerState(
+                $state.db, $state.db.orchids, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
 class _$AppDatabaseManager {
   final _$AppDatabase _db;
   _$AppDatabaseManager(this._db);
@@ -3847,4 +7161,14 @@ class _$AppDatabaseManager {
       $$SoakSessionsTableTableManager(_db, _db.soakSessions);
   $$SoakSessionTasksTableTableManager get soakSessionTasks =>
       $$SoakSessionTasksTableTableManager(_db, _db.soakSessionTasks);
+  $$BloomLogsTableTableManager get bloomLogs =>
+      $$BloomLogsTableTableManager(_db, _db.bloomLogs);
+  $$PhotoJournalTableTableManager get photoJournal =>
+      $$PhotoJournalTableTableManager(_db, _db.photoJournal);
+  $$SpeciesProfilesTableTableManager get speciesProfiles =>
+      $$SpeciesProfilesTableTableManager(_db, _db.speciesProfiles);
+  $$GrowingLocationsTableTableManager get growingLocations =>
+      $$GrowingLocationsTableTableManager(_db, _db.growingLocations);
+  $$MilestonesTableTableManager get milestones =>
+      $$MilestonesTableTableManager(_db, _db.milestones);
 }

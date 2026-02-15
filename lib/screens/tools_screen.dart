@@ -14,6 +14,7 @@ import '../services/light_sensor_service.dart';
 import '../widgets/orchid_sliver_app_bar.dart';
 import '../widgets/orchid_card.dart';
 import '../widgets/page_transitions.dart';
+import 'locations_screen.dart';
 
 class ToolsScreen extends StatelessWidget {
   const ToolsScreen({super.key});
@@ -49,6 +50,18 @@ class ToolsScreen extends StatelessWidget {
                   onTap: () => Navigator.push(
                     context,
                     OrchidPageRoute(builder: (_) => const AIHandoffScreen()),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                _buildToolCard(
+                  context,
+                  icon: Icons.location_on,
+                  title: 'Growing Locations',
+                  subtitle: 'Manage where your orchids live',
+                  color: AppTheme.primaryDark,
+                  onTap: () => Navigator.push(
+                    context,
+                    OrchidPageRoute(builder: (_) => const LocationsScreen()),
                   ),
                 ),
                 const SizedBox(height: 4),

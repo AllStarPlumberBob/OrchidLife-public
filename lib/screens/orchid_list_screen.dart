@@ -5,13 +5,21 @@ import '../database/database.dart';
 import '../theme/app_theme.dart';
 import '../widgets/orchid_sliver_app_bar.dart';
 import '../widgets/orchid_card.dart';
+import '../widgets/bloom_stage_widget.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/page_transitions.dart';
 import 'orchid_detail_screen.dart';
-import 'add_edit_orchid_screen.dart';
+import 'add_orchid_wizard_screen.dart';
 
-class OrchidListScreen extends StatelessWidget {
+class OrchidListScreen extends StatefulWidget {
   const OrchidListScreen({super.key});
+
+  @override
+  State<OrchidListScreen> createState() => _OrchidListScreenState();
+}
+
+class _OrchidListScreenState extends State<OrchidListScreen> {
+  bool _isGalleryView = false;
 
   @override
   Widget build(BuildContext context) {
@@ -72,20 +80,46 @@ class OrchidListScreen extends StatelessWidget {
 
               return CustomScrollView(
                 slivers: [
-                  const OrchidSliverAppBar(title: 'My Orchids'),
-                  SliverPadding(
-                    padding: const EdgeInsets.all(16),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final orchid = orchids[index];
-                          final dueCount = dueCounts[orchid.id] ?? 0;
-                          return _buildOrchidCard(context, orchid, dueCount);
-                        },
-                        childCount: orchids.length,
+                  OrchidSliverAppBar(
+                    title: 'My Orchids',
+                    actions: [
+                      IconButton(
+                        icon: Icon(_isGalleryView ? Icons.view_list : Icons.grid_view),
+                        tooltip: _isGalleryView ? 'List view' : 'Gallery view',
+                        onPressed: () => setState(() => _isGalleryView = !_isGalleryView),
+                      ),
+                    ],
+                  ),
+                  if (_isGalleryView)
+                    SliverPadding(
+                      padding: const EdgeInsets.all(12),
+                      sliver: SliverGrid(
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                          childAspectRatio: 0.78,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => _GalleryCard(orchid: orchids[index]),
+                          childCount: orchids.length,
+                        ),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.all(16),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final orchid = orchids[index];
+                            final dueCount = dueCounts[orchid.id] ?? 0;
+                            return _buildOrchidCard(context, orchid, dueCount);
+                          },
+                          childCount: orchids.length,
+                        ),
                       ),
                     ),
-                  ),
                   // Bottom spacing so last card scrolls above the FAB
                   const SliverPadding(padding: EdgeInsets.only(bottom: 88)),
                 ],
@@ -258,7 +292,89 @@ class OrchidListScreen extends StatelessWidget {
     Navigator.push(
       context,
       OrchidPageRoute(
-        builder: (context) => const AddEditOrchidScreen(),
+        builder: (context) => const AddOrchidWizardScreen(),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// Gallery card for grid view
+// ============================================================
+
+class _GalleryCard extends StatelessWidget {
+  final Orchid orchid;
+
+  const _GalleryCard({required this.orchid});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        OrchidPageRoute(builder: (_) => OrchidDetailScreen(orchidId: orchid.id)),
+      ),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              flex: 3,
+              child: orchid.photoPath != null
+                  ? Image.file(
+                      File(orchid.photoPath!),
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _placeholder(),
+                    )
+                  : _placeholder(),
+            ),
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      orchid.name,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (orchid.variety != null)
+                      Text(
+                        orchid.variety!,
+                        style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    const Spacer(),
+                    Row(
+                      children: [
+                        if (orchid.currentBloomStage != null)
+                          BloomStageBadge(stage: orchid.currentBloomStage!),
+                        if (orchid.isRescue) ...[
+                          if (orchid.currentBloomStage != null) const SizedBox(width: 4),
+                          const Icon(Icons.healing, size: 14, color: AppTheme.statusOverdue),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _placeholder() {
+    return Container(
+      color: AppTheme.primary.withValues(alpha: 0.1),
+      child: const Center(
+        child: Icon(Icons.local_florist, color: AppTheme.primary, size: 40),
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'database/database.dart';
 import 'services/notification_service.dart';
 import 'services/light_sensor_service.dart';
+import 'services/milestone_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/main_navigation.dart';
 
@@ -46,6 +47,13 @@ void main() async {
     await database.markExpiredSessionsReadyToDrain();
   } catch (e) {
     debugPrint('Soak session cleanup error: $e');
+  }
+
+  // Check for milestones
+  try {
+    await MilestoneService(database).checkMilestones();
+  } catch (e) {
+    debugPrint('Milestone check error: $e');
   }
 
   runApp(

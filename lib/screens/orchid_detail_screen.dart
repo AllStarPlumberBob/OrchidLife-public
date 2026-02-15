@@ -10,7 +10,12 @@ import '../widgets/orchid_sliver_app_bar.dart';
 import '../widgets/orchid_card.dart';
 import '../widgets/page_transitions.dart';
 import '../widgets/add_care_task_dialog.dart';
+import '../widgets/bloom_stage_widget.dart';
+import '../widgets/photo_journal_section.dart';
+import '../services/seasonal_context_service.dart';
 import 'add_edit_orchid_screen.dart';
+import 'species_profile_screen.dart';
+import '../services/diagnostic_service.dart';
 
 class OrchidDetailScreen extends StatelessWidget {
   final int orchidId;
@@ -68,10 +73,32 @@ class OrchidDetailScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
+                    // 1. Info Card with bloom badge, last potted, rescue chip
                     _buildInfoCard(orchid),
                     const SizedBox(height: 16),
+                    // 2. Bloom Status (interactive stepper)
+                    _buildBloomSection(context, db, orchid),
+                    const SizedBox(height: 16),
+                    // 3. Light Exposure (if species linked)
+                    _LightExposureCard(orchidId: orchidId, db: db),
+                    // 4. Species Temperature Guidance
+                    _TemperatureCard(orchidId: orchidId, db: db),
+                    // 4b. Seasonal Tips
+                    _SeasonalTipsCard(orchidId: orchidId, db: db),
+                    // 4c. Species deep dive link
+                    _SpeciesLink(orchidId: orchidId, db: db),
+                    // 4d. Care Insights
+                    _CareInsightsCard(orchidId: orchidId, db: db),
+                    // 5. Photo Journal
+                    PhotoJournalSection(orchidId: orchidId, db: db),
+                    const SizedBox(height: 16),
+                    // 6. Bloom History
+                    _buildBloomHistory(context, db),
+                    const SizedBox(height: 16),
+                    // 7. Care Schedule (existing)
                     _buildCareTasksSection(context, db),
                     const SizedBox(height: 16),
+                    // 8. Care History (existing)
                     _buildCareHistorySection(context, db),
                     SizedBox(height: 32 + MediaQuery.of(context).padding.bottom),
                   ]),
@@ -124,7 +151,40 @@ class OrchidDetailScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (orchid.variety != null)
+                    // Badges row
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        if (orchid.currentBloomStage != null)
+                          BloomStageBadge(stage: orchid.currentBloomStage!),
+                        if (orchid.isRescue)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppTheme.statusOverdue.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.healing, size: 12, color: AppTheme.statusOverdue),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Rescue',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.statusOverdue,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                    if (orchid.variety != null) ...[
+                      const SizedBox(height: 4),
                       Text(
                         orchid.variety!,
                         style: const TextStyle(
@@ -132,6 +192,7 @@ class OrchidDetailScreen extends StatelessWidget {
                           color: AppTheme.textSecondary,
                         ),
                       ),
+                    ],
                     if (orchid.location != null) ...[
                       const SizedBox(height: 8),
                       Row(
@@ -152,6 +213,19 @@ class OrchidDetailScreen extends StatelessWidget {
                         ],
                       ),
                     ],
+                    if (orchid.lastPotted != null) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.yard, size: 16, color: AppTheme.repotBrown),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Last potted ${DateFormat.yMMMd().format(orchid.lastPotted!)}',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -164,6 +238,96 @@ class OrchidDetailScreen extends StatelessWidget {
               style: const TextStyle(fontStyle: FontStyle.italic),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBloomSection(BuildContext context, AppDatabase db, Orchid orchid) {
+    return OrchidCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.local_florist, color: AppTheme.bloom, size: 20),
+              const SizedBox(width: 8),
+              const Text(
+                'Bloom Status',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: () => _updateBloomStage(context, db, orchid),
+                child: const Text('Update'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          BloomStageWidget(
+            currentStage: orchid.currentBloomStage,
+            onStageChanged: (stage) => _setBloomStage(context, db, orchid, stage),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBloomHistory(BuildContext context, AppDatabase db) {
+    return OrchidCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.timeline, color: AppTheme.bloom, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Bloom History',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          StreamBuilder<List<BloomLog>>(
+            stream: db.watchBloomLogsForOrchid(orchidId),
+            builder: (context, snapshot) {
+              final logs = snapshot.data ?? [];
+
+              if (logs.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    'No bloom history yet',
+                    style: TextStyle(color: AppTheme.textSecondary),
+                  ),
+                );
+              }
+
+              return Column(
+                children: logs.take(5).map((log) {
+                  final color = BloomStageWidget.stageColor(log.stage);
+                  return ListTile(
+                    dense: true,
+                    leading: Icon(
+                      BloomStageWidget.stageIcon(log.stage),
+                      color: color,
+                      size: 20,
+                    ),
+                    title: Text(
+                      BloomStageWidget.stageName(log.stage),
+                      style: TextStyle(color: color, fontWeight: FontWeight.w500),
+                    ),
+                    subtitle: log.notes != null ? Text(log.notes!) : null,
+                    trailing: Text(
+                      DateFormat.MMMd().format(log.dateLogged),
+                      style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -407,5 +571,518 @@ class OrchidDetailScreen extends StatelessWidget {
       if (newTask != null) await notif.scheduleTaskNotification(newTask);
     }
   }
+
+  Future<void> _updateBloomStage(BuildContext context, AppDatabase db, Orchid orchid) async {
+    final result = await showDialog<({BloomStage stage, String? notes})>(
+      context: context,
+      builder: (context) => _BloomUpdateDialog(currentStage: orchid.currentBloomStage),
+    );
+
+    if (result != null) {
+      await db.insertBloomLog(BloomLogsCompanion.insert(
+        orchidId: orchidId,
+        stage: result.stage,
+        dateLogged: DateTime.now(),
+        notes: Value(result.notes),
+      ));
+    }
+  }
+
+  Future<void> _setBloomStage(BuildContext context, AppDatabase db, Orchid orchid, BloomStage stage) async {
+    await db.insertBloomLog(BloomLogsCompanion.insert(
+      orchidId: orchidId,
+      stage: stage,
+      dateLogged: DateTime.now(),
+    ));
+  }
 }
 
+// ============================================================
+// Light Exposure Card
+// ============================================================
+
+class _LightExposureCard extends StatelessWidget {
+  final int orchidId;
+  final AppDatabase db;
+
+  const _LightExposureCard({required this.orchidId, required this.db});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<SpeciesProfile?>(
+      future: db.getSpeciesProfileForOrchid(orchidId),
+      builder: (context, speciesSnap) {
+        return FutureBuilder<LightReading?>(
+          future: db.getLatestLightReadingForOrchid(orchidId),
+          builder: (context, readingSnap) {
+            final species = speciesSnap.data;
+            final reading = readingSnap.data;
+
+            // Only show if there's a reading or species data
+            if (reading == null && species == null) return const SizedBox.shrink();
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: OrchidCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.light_mode, color: AppTheme.statusNeedsCare, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Light Exposure',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (reading != null) ...[
+                      Row(
+                        children: [
+                          Text(
+                            '${reading.luxValue.toStringAsFixed(0)} lux',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: _getLuxColor(reading.luxValue, species),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _getLuxColor(reading.luxValue, species).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                            ),
+                            child: Text(
+                              _getLuxLabel(reading.luxValue, species),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: _getLuxColor(reading.luxValue, species),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        'Last reading: ${DateFormat.yMMMd().format(reading.readingAt)}',
+                        style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                      ),
+                    ],
+                    if (species != null && species.idealLuxMin != null && species.idealLuxMax != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Ideal range: ${species.idealLuxMin}-${species.idealLuxMax} lux',
+                        style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Color _getLuxColor(double lux, SpeciesProfile? species) {
+    if (species != null && species.idealLuxMin != null && species.idealLuxMax != null) {
+      if (lux < species.idealLuxMin!) return AppTheme.statusUpcoming;
+      if (lux > species.idealLuxMax!) return AppTheme.statusOverdue;
+      return AppTheme.statusCompleted;
+    }
+    if (lux < 1000) return AppTheme.statusUpcoming;
+    if (lux < 5000) return AppTheme.statusCompleted;
+    return AppTheme.statusNeedsCare;
+  }
+
+  String _getLuxLabel(double lux, SpeciesProfile? species) {
+    if (species != null && species.idealLuxMin != null && species.idealLuxMax != null) {
+      if (lux < species.idealLuxMin!) return 'Below ideal';
+      if (lux > species.idealLuxMax!) return 'Above ideal';
+      return 'Ideal';
+    }
+    if (lux < 500) return 'Low';
+    if (lux < 1000) return 'Medium';
+    if (lux < 5000) return 'Bright Indirect';
+    return 'Bright';
+  }
+}
+
+// ============================================================
+// Temperature Guidance Card
+// ============================================================
+
+class _TemperatureCard extends StatelessWidget {
+  final int orchidId;
+  final AppDatabase db;
+
+  const _TemperatureCard({required this.orchidId, required this.db});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<SpeciesProfile?>(
+      future: db.getSpeciesProfileForOrchid(orchidId),
+      builder: (context, snapshot) {
+        final species = snapshot.data;
+        if (species == null || species.tempMinF == null) return const SizedBox.shrink();
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: OrchidCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.thermostat, color: AppTheme.statusOverdue, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'Temperature',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _TempChip(label: 'Min', value: '${species.tempMinF}\u00b0F', color: AppTheme.statusUpcoming),
+                    const SizedBox(width: 8),
+                    _TempChip(label: 'Max', value: '${species.tempMaxF}\u00b0F', color: AppTheme.statusOverdue),
+                    if (species.tempNightDropF != null) ...[
+                      const SizedBox(width: 8),
+                      _TempChip(label: 'Night drop', value: '${species.tempNightDropF}\u00b0F', color: AppTheme.inspectPurple),
+                    ],
+                  ],
+                ),
+                if (species.humidity != null) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.water, size: 16, color: AppTheme.mistCyan),
+                      const SizedBox(width: 4),
+                      Text('Humidity: ${species.humidity}', style: const TextStyle(fontSize: 13)),
+                    ],
+                  ),
+                ],
+                if (species.bloomSeason != null) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.local_florist, size: 16, color: AppTheme.bloom),
+                      const SizedBox(width: 4),
+                      Text('Bloom season: ${species.bloomSeason}', style: const TextStyle(fontSize: 13)),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _TempChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _TempChip({required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+      ),
+      child: Column(
+        children: [
+          Text(label, style: TextStyle(fontSize: 10, color: color)),
+          Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// Seasonal Tips Card
+// ============================================================
+
+class _SeasonalTipsCard extends StatelessWidget {
+  final int orchidId;
+  final AppDatabase db;
+
+  const _SeasonalTipsCard({required this.orchidId, required this.db});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<SpeciesProfile?>(
+      future: db.getSpeciesProfileForOrchid(orchidId),
+      builder: (context, snapshot) {
+        final species = snapshot.data;
+        if (species == null) return const SizedBox.shrink();
+
+        final tips = SeasonalContextService.getTips(species.genus);
+        if (tips.isEmpty) return const SizedBox.shrink();
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: OrchidCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.wb_sunny, color: AppTheme.statusNeedsCare, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${SeasonalContextService.getSeasonName()} Tips',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ...tips.take(3).map((tip) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(top: 6),
+                        child: Icon(Icons.eco, size: 14, color: AppTheme.primary),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(tip, style: const TextStyle(fontSize: 13))),
+                    ],
+                  ),
+                )),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ============================================================
+// Species Profile Link
+// ============================================================
+
+class _SpeciesLink extends StatelessWidget {
+  final int orchidId;
+  final AppDatabase db;
+
+  const _SpeciesLink({required this.orchidId, required this.db});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<SpeciesProfile?>(
+      future: db.getSpeciesProfileForOrchid(orchidId),
+      builder: (context, snapshot) {
+        final species = snapshot.data;
+        if (species == null) return const SizedBox.shrink();
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: OutlinedButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              OrchidPageRoute(builder: (_) => SpeciesProfileScreen(species: species)),
+            ),
+            icon: const Icon(Icons.menu_book, size: 18),
+            label: Text('${species.commonName} Care Guide'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 44),
+              foregroundColor: AppTheme.primary,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ============================================================
+// Care Insights Card (Diagnostic Engine)
+// ============================================================
+
+class _CareInsightsCard extends StatelessWidget {
+  final int orchidId;
+  final AppDatabase db;
+
+  const _CareInsightsCard({required this.orchidId, required this.db});
+
+  @override
+  Widget build(BuildContext context) {
+    final diagnostics = DiagnosticService(db);
+
+    return FutureBuilder<List<CareInsight>>(
+      future: diagnostics.getInsightsForOrchid(orchidId),
+      builder: (context, snapshot) {
+        final insights = snapshot.data ?? [];
+        if (insights.isEmpty) return const SizedBox.shrink();
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: OrchidCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.insights, color: AppTheme.inspectPurple, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'Care Insights',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ...insights.take(3).map((insight) {
+                  final color = switch (insight.type) {
+                    InsightType.positive => AppTheme.statusCompleted,
+                    InsightType.warning => AppTheme.statusNeedsCare,
+                    InsightType.info => AppTheme.statusUpcoming,
+                  };
+                  final icon = switch (insight.type) {
+                    InsightType.positive => Icons.thumb_up,
+                    InsightType.warning => Icons.warning_amber,
+                    InsightType.info => Icons.info_outline,
+                  };
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(icon, size: 18, color: color),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                insight.title,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: color,
+                                ),
+                              ),
+                              Text(
+                                insight.message,
+                                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ============================================================
+// Bloom Update Dialog
+// ============================================================
+
+class _BloomUpdateDialog extends StatefulWidget {
+  final BloomStage? currentStage;
+
+  const _BloomUpdateDialog({this.currentStage});
+
+  @override
+  State<_BloomUpdateDialog> createState() => _BloomUpdateDialogState();
+}
+
+class _BloomUpdateDialogState extends State<_BloomUpdateDialog> {
+  late BloomStage _selected;
+  final _notesController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = widget.currentStage ?? BloomStage.dormant;
+  }
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Update Bloom Stage'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: BloomStage.values.map((stage) {
+              final isSelected = _selected == stage;
+              final color = BloomStageWidget.stageColor(stage);
+              return ChoiceChip(
+                label: Text(
+                  BloomStageWidget.stageName(stage),
+                  style: TextStyle(color: isSelected ? Colors.white : null),
+                ),
+                selected: isSelected,
+                selectedColor: color,
+                avatar: Icon(
+                  BloomStageWidget.stageIcon(stage),
+                  size: 18,
+                  color: isSelected ? Colors.white : color,
+                ),
+                onSelected: (_) => setState(() => _selected = stage),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _notesController,
+            decoration: const InputDecoration(
+              labelText: 'Notes (optional)',
+              hintText: 'Any observations...',
+            ),
+            maxLines: 2,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, (
+            stage: _selected,
+            notes: _notesController.text.isEmpty ? null : _notesController.text,
+          )),
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}

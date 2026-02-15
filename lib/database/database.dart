@@ -22,10 +22,21 @@ class Orchids extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   BoolColumn get isDemo => boolean().withDefault(const Constant(false))();
   IntColumn get soakDurationMinutes => integer().withDefault(const Constant(15))();
+  TextColumn get currentBloomStage => textEnum<BloomStage>().nullable()();
+  DateTimeColumn get lastPotted => dateTime().nullable()();
+  BoolColumn get isRescue => boolean().withDefault(const Constant(false))();
+  IntColumn get speciesProfileId => integer().nullable()();
+  IntColumn get growingLocationId => integer().nullable()();
 }
 
 /// Care task types enum stored as text
 enum CareType { water, fertilize, repot, mist, inspect, prune, other }
+
+/// Bloom stage enum
+enum BloomStage { dormant, spikeEmerging, budding, inBloom, fading }
+
+/// Photo journal tag enum
+enum PhotoTag { bloom, repot, newGrowth, rootCheck, general }
 
 /// Care tasks (schedules) for each orchid
 class CareTasks extends Table {
@@ -92,16 +103,78 @@ class SoakSessionTasks extends Table {
   IntColumn get orchidId => integer().references(Orchids, #id)();
 }
 
+/// Bloom cycle logs
+class BloomLogs extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get orchidId => integer().references(Orchids, #id)();
+  TextColumn get stage => textEnum<BloomStage>()();
+  DateTimeColumn get dateLogged => dateTime()();
+  TextColumn get notes => text().nullable()();
+  TextColumn get photoPath => text().nullable()();
+}
+
+/// Photo journal entries
+class PhotoJournal extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get orchidId => integer().references(Orchids, #id)();
+  TextColumn get photoPath => text()();
+  DateTimeColumn get dateTaken => dateTime()();
+  TextColumn get note => text().nullable()();
+  TextColumn get tag => textEnum<PhotoTag>()();
+}
+
+/// Species profiles for care defaults and intelligence
+class SpeciesProfiles extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get commonName => text()();
+  TextColumn get genus => text()();
+  TextColumn get species => text().nullable()();
+  IntColumn get idealLuxMin => integer().nullable()();
+  IntColumn get idealLuxMax => integer().nullable()();
+  IntColumn get tempMinF => integer().nullable()();
+  IntColumn get tempMaxF => integer().nullable()();
+  IntColumn get tempNightDropF => integer().nullable()();
+  TextColumn get humidity => text().nullable()();
+  TextColumn get bloomSeason => text().nullable()();
+  TextColumn get wateringNotes => text().nullable()();
+  TextColumn get fertilizingNotes => text().nullable()();
+  TextColumn get difficultyLevel => text().nullable()();
+  TextColumn get description => text().nullable()();
+}
+
+/// Growing locations for orchid placement
+class GrowingLocations extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text()();
+  TextColumn get description => text().nullable()();
+  RealColumn get latestLuxReading => real().nullable()();
+  DateTimeColumn get lastReadingAt => dateTime().nullable()();
+}
+
+/// Milestone moments for orchid achievements
+class Milestones extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get orchidId => integer().references(Orchids, #id)();
+  TextColumn get type => text()();
+  TextColumn get message => text()();
+  DateTimeColumn get triggeredAt => dateTime()();
+  BoolColumn get dismissed => boolean().withDefault(const Constant(false))();
+}
+
 // ============================================================
 // DATABASE CLASS
 // ============================================================
 
-@DriftDatabase(tables: [Orchids, CareTasks, CareLogs, LightReadings, Settings, SoakSessions, SoakSessionTasks])
+@DriftDatabase(tables: [
+  Orchids, CareTasks, CareLogs, LightReadings, Settings,
+  SoakSessions, SoakSessionTasks, BloomLogs, PhotoJournal,
+  SpeciesProfiles, GrowingLocations, Milestones,
+])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -111,6 +184,33 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(orchids, orchids.soakDurationMinutes);
             await m.createTable(soakSessions);
             await m.createTable(soakSessionTasks);
+          }
+          if (from < 3) {
+            await m.addColumn(orchids, orchids.currentBloomStage);
+            await m.addColumn(orchids, orchids.lastPotted);
+            await m.addColumn(orchids, orchids.isRescue);
+            await m.createTable(bloomLogs);
+            await m.createTable(photoJournal);
+          }
+          if (from < 4) {
+            await m.createTable(speciesProfiles);
+            await m.addColumn(orchids, orchids.speciesProfileId);
+            // Seed species data
+            await _seedSpeciesProfiles();
+          }
+          if (from < 5) {
+            await m.createTable(growingLocations);
+            await m.createTable(milestones);
+            await m.addColumn(orchids, orchids.growingLocationId);
+          }
+          if (from < 6) {
+            // Batch 5 — no schema changes, version bump for completeness
+          }
+        },
+        beforeOpen: (details) async {
+          // Seed species profiles on fresh install
+          if (details.wasCreated) {
+            await _seedSpeciesProfiles();
           }
         },
       );
@@ -141,6 +241,9 @@ class AppDatabase extends _$AppDatabase {
       await (delete(careLogs)..where((l) => l.orchidId.equals(id))).go();
       await (delete(careTasks)..where((t) => t.orchidId.equals(id))).go();
       await (delete(lightReadings)..where((r) => r.orchidId.equals(id))).go();
+      await (delete(bloomLogs)..where((b) => b.orchidId.equals(id))).go();
+      await (delete(photoJournal)..where((p) => p.orchidId.equals(id))).go();
+      await (delete(milestones)..where((m) => m.orchidId.equals(id))).go();
       await (delete(orchids)..where((o) => o.id.equals(id))).go();
     });
   }
@@ -227,6 +330,13 @@ class AppDatabase extends _$AppDatabase {
           nextDue: Value(nextDue),
         ),
       );
+
+      // Update lastPotted when repotting
+      if (task.careType == CareType.repot && !skipped) {
+        await (update(orchids)..where((o) => o.id.equals(task.orchidId))).write(
+          OrchidsCompanion(lastPotted: Value(now)),
+        );
+      }
     });
   }
 
@@ -305,6 +415,108 @@ class AppDatabase extends _$AppDatabase {
 
   Future<int> insertLightReading(LightReadingsCompanion reading) =>
       into(lightReadings).insert(reading);
+
+  // ============================================================
+  // BLOOM LOG OPERATIONS
+  // ============================================================
+
+  Stream<List<BloomLog>> watchBloomLogsForOrchid(int orchidId) =>
+      (select(bloomLogs)
+            ..where((b) => b.orchidId.equals(orchidId))
+            ..orderBy([(b) => OrderingTerm.desc(b.dateLogged)]))
+          .watch();
+
+  Future<int> insertBloomLog(BloomLogsCompanion log) async {
+    final id = await into(bloomLogs).insert(log);
+    // Update orchid's current bloom stage
+    await (update(orchids)..where((o) => o.id.equals(log.orchidId.value))).write(
+      OrchidsCompanion(currentBloomStage: log.stage),
+    );
+    return id;
+  }
+
+  // ============================================================
+  // PHOTO JOURNAL OPERATIONS
+  // ============================================================
+
+  Stream<List<PhotoJournalData>> watchPhotoJournalForOrchid(int orchidId) =>
+      (select(photoJournal)
+            ..where((p) => p.orchidId.equals(orchidId))
+            ..orderBy([(p) => OrderingTerm.desc(p.dateTaken)]))
+          .watch();
+
+  Future<List<PhotoJournalData>> getPhotoJournalForOrchid(int orchidId) =>
+      (select(photoJournal)
+            ..where((p) => p.orchidId.equals(orchidId))
+            ..orderBy([(p) => OrderingTerm.desc(p.dateTaken)]))
+          .get();
+
+  Future<int> insertPhotoJournalEntry(PhotoJournalCompanion entry) =>
+      into(photoJournal).insert(entry);
+
+  Future<int> deletePhotoJournalEntry(int id) =>
+      (delete(photoJournal)..where((p) => p.id.equals(id))).go();
+
+  // ============================================================
+  // SPECIES PROFILE OPERATIONS
+  // ============================================================
+
+  Future<List<SpeciesProfile>> getAllSpeciesProfiles() =>
+      (select(speciesProfiles)..orderBy([(s) => OrderingTerm.asc(s.commonName)])).get();
+
+  Future<SpeciesProfile?> getSpeciesProfileById(int id) =>
+      (select(speciesProfiles)..where((s) => s.id.equals(id))).getSingleOrNull();
+
+  Future<SpeciesProfile?> getSpeciesProfileForOrchid(int orchidId) async {
+    final orchid = await getOrchidById(orchidId);
+    if (orchid?.speciesProfileId == null) return null;
+    return getSpeciesProfileById(orchid!.speciesProfileId!);
+  }
+
+  Future<LightReading?> getLatestLightReadingForOrchid(int orchidId) =>
+      (select(lightReadings)
+            ..where((r) => r.orchidId.equals(orchidId))
+            ..orderBy([(r) => OrderingTerm.desc(r.readingAt)])
+            ..limit(1))
+          .getSingleOrNull();
+
+  // ============================================================
+  // GROWING LOCATION OPERATIONS
+  // ============================================================
+
+  Future<List<GrowingLocation>> getAllGrowingLocations() =>
+      (select(growingLocations)..orderBy([(l) => OrderingTerm.asc(l.name)])).get();
+
+  Stream<List<GrowingLocation>> watchAllGrowingLocations() =>
+      (select(growingLocations)..orderBy([(l) => OrderingTerm.asc(l.name)])).watch();
+
+  Future<int> insertGrowingLocation(GrowingLocationsCompanion location) =>
+      into(growingLocations).insert(location);
+
+  Future<bool> updateGrowingLocation(GrowingLocation location) =>
+      update(growingLocations).replace(location);
+
+  Future<int> deleteGrowingLocation(int id) =>
+      (delete(growingLocations)..where((l) => l.id.equals(id))).go();
+
+  // ============================================================
+  // MILESTONE OPERATIONS
+  // ============================================================
+
+  Stream<List<Milestone>> watchUndismissedMilestones() =>
+      (select(milestones)
+            ..where((m) => m.dismissed.equals(false))
+            ..orderBy([(m) => OrderingTerm.desc(m.triggeredAt)]))
+          .watch();
+
+  Future<int> insertMilestone(MilestonesCompanion milestone) =>
+      into(milestones).insert(milestone);
+
+  Future<void> dismissMilestone(int id) async {
+    await (update(milestones)..where((m) => m.id.equals(id))).write(
+      const MilestonesCompanion(dismissed: Value(true)),
+    );
+  }
 
   // ============================================================
   // SOAK SESSION OPERATIONS
@@ -514,6 +726,46 @@ class AppDatabase extends _$AppDatabase {
     final demoOrchids = await (select(orchids)..where((o) => o.isDemo.equals(true))).get();
     for (final orchid in demoOrchids) {
       await deleteOrchidAndRelated(orchid.id);
+    }
+  }
+
+  // ============================================================
+  // SPECIES PROFILES SEED DATA
+  // ============================================================
+
+  Future<void> _seedSpeciesProfiles() async {
+    final existing = await select(speciesProfiles).get();
+    if (existing.isNotEmpty) return;
+
+    final profiles = [
+      SpeciesProfilesCompanion.insert(commonName: 'Moth Orchid', genus: 'Phalaenopsis', species: const Value('spp.'), idealLuxMin: const Value(1000), idealLuxMax: const Value(3000), tempMinF: const Value(65), tempMaxF: const Value(80), tempNightDropF: const Value(10), humidity: const Value('50-70%'), bloomSeason: const Value('Winter-Spring'), wateringNotes: const Value('Water when roots turn silvery. Soak for 15 min, drain completely.'), fertilizingNotes: const Value('Weekly at 1/4 strength during active growth.'), difficultyLevel: const Value('Easy'), description: const Value('The most popular orchid. Long-lasting blooms in many colors. Great for beginners.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Dendrobium', genus: 'Dendrobium', species: const Value('spp.'), idealLuxMin: const Value(2000), idealLuxMax: const Value(5000), tempMinF: const Value(60), tempMaxF: const Value(85), tempNightDropF: const Value(15), humidity: const Value('50-70%'), bloomSeason: const Value('Spring'), wateringNotes: const Value('Let dry between waterings. Reduce water in winter rest period.'), fertilizingNotes: const Value('Monthly during growth, stop in winter.'), difficultyLevel: const Value('Moderate'), description: const Value('Large diverse genus. Many need a cool dry rest to trigger blooming.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Cattleya', genus: 'Cattleya', species: const Value('spp.'), idealLuxMin: const Value(3000), idealLuxMax: const Value(5000), tempMinF: const Value(58), tempMaxF: const Value(85), tempNightDropF: const Value(15), humidity: const Value('50-80%'), bloomSeason: const Value('Fall-Spring'), wateringNotes: const Value('Water when medium is nearly dry. Good air circulation essential.'), fertilizingNotes: const Value('Weekly at 1/4 strength during growth.'), difficultyLevel: const Value('Moderate'), description: const Value('Classic corsage orchid with large fragrant blooms. Needs bright light.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Oncidium', genus: 'Oncidium', species: const Value('spp.'), idealLuxMin: const Value(2000), idealLuxMax: const Value(4000), tempMinF: const Value(58), tempMaxF: const Value(80), tempNightDropF: const Value(10), humidity: const Value('40-60%'), bloomSeason: const Value('Fall'), wateringNotes: const Value('Water when medium approaches dryness. Avoid soggy roots.'), fertilizingNotes: const Value('Biweekly at 1/4 strength.'), difficultyLevel: const Value('Easy'), description: const Value('Dancing lady orchids. Produces sprays of many small cheerful blooms.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Vanda', genus: 'Vanda', species: const Value('spp.'), idealLuxMin: const Value(4000), idealLuxMax: const Value(8000), tempMinF: const Value(65), tempMaxF: const Value(95), tempNightDropF: const Value(10), humidity: const Value('60-80%'), bloomSeason: const Value('Spring-Summer'), wateringNotes: const Value('Daily misting or soaking of aerial roots. High humidity essential.'), fertilizingNotes: const Value('Weekly with balanced fertilizer.'), difficultyLevel: const Value('Advanced'), description: const Value('Stunning large flat flowers. Often grown in baskets with bare roots. Needs high light.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Lady Slipper', genus: 'Paphiopedilum', species: const Value('spp.'), idealLuxMin: const Value(800), idealLuxMax: const Value(2000), tempMinF: const Value(60), tempMaxF: const Value(80), tempNightDropF: const Value(10), humidity: const Value('50-70%'), bloomSeason: const Value('Winter-Spring'), wateringNotes: const Value('Keep evenly moist. Never let dry completely or sit in water.'), fertilizingNotes: const Value('Monthly at 1/4 strength.'), difficultyLevel: const Value('Easy'), description: const Value('Distinctive pouch-shaped lip. Tolerates lower light. No pseudobulbs.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Cymbidium', genus: 'Cymbidium', species: const Value('spp.'), idealLuxMin: const Value(3000), idealLuxMax: const Value(6000), tempMinF: const Value(45), tempMaxF: const Value(75), tempNightDropF: const Value(20), humidity: const Value('40-60%'), bloomSeason: const Value('Winter-Spring'), wateringNotes: const Value('Keep moist during growth. Reduce in winter.'), fertilizingNotes: const Value('Biweekly at half strength during growth.'), difficultyLevel: const Value('Moderate'), description: const Value('Cool-growing orchids with tall sprays of long-lasting blooms. Great for outdoor growing.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Miltonia', genus: 'Miltonia', species: const Value('spp.'), idealLuxMin: const Value(1500), idealLuxMax: const Value(3000), tempMinF: const Value(60), tempMaxF: const Value(80), tempNightDropF: const Value(10), humidity: const Value('60-80%'), bloomSeason: const Value('Spring-Summer'), wateringNotes: const Value('Keep evenly moist. Sensitive to salt buildup.'), fertilizingNotes: const Value('Biweekly at 1/4 strength.'), difficultyLevel: const Value('Moderate'), description: const Value('Pansy orchids with flat, colorful, fragrant flowers.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Miltoniopsis', genus: 'Miltoniopsis', species: const Value('spp.'), idealLuxMin: const Value(1000), idealLuxMax: const Value(2500), tempMinF: const Value(55), tempMaxF: const Value(75), tempNightDropF: const Value(10), humidity: const Value('60-80%'), bloomSeason: const Value('Spring'), wateringNotes: const Value('Keep evenly moist. Sensitive to overwatering.'), fertilizingNotes: const Value('Weekly at 1/4 strength.'), difficultyLevel: const Value('Advanced'), description: const Value('Cool-growing pansy orchids. Beautiful waterfall-like flowers.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Brassia', genus: 'Brassia', species: const Value('spp.'), idealLuxMin: const Value(2000), idealLuxMax: const Value(4000), tempMinF: const Value(58), tempMaxF: const Value(80), tempNightDropF: const Value(10), humidity: const Value('50-70%'), bloomSeason: const Value('Spring-Summer'), wateringNotes: const Value('Water when approaching dryness.'), fertilizingNotes: const Value('Biweekly during growth.'), difficultyLevel: const Value('Easy'), description: const Value('Spider orchids with dramatic long-petaled flowers.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Zygopetalum', genus: 'Zygopetalum', species: const Value('spp.'), idealLuxMin: const Value(2000), idealLuxMax: const Value(4000), tempMinF: const Value(55), tempMaxF: const Value(75), tempNightDropF: const Value(15), humidity: const Value('50-70%'), bloomSeason: const Value('Fall-Winter'), wateringNotes: const Value('Keep moist. Let medium nearly dry between waterings.'), fertilizingNotes: const Value('Biweekly during growth.'), difficultyLevel: const Value('Moderate'), description: const Value('Fragrant orchids with striking patterned flowers in greens and purples.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Ludisia', genus: 'Ludisia', species: const Value('discolor'), idealLuxMin: const Value(500), idealLuxMax: const Value(1500), tempMinF: const Value(65), tempMaxF: const Value(80), tempNightDropF: const Value(10), humidity: const Value('50-70%'), bloomSeason: const Value('Winter'), wateringNotes: const Value('Keep moist but not waterlogged.'), fertilizingNotes: const Value('Monthly at 1/4 strength.'), difficultyLevel: const Value('Easy'), description: const Value('Jewel orchid grown for its stunning dark velvety leaves with silver veining.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Epidendrum', genus: 'Epidendrum', species: const Value('spp.'), idealLuxMin: const Value(3000), idealLuxMax: const Value(6000), tempMinF: const Value(55), tempMaxF: const Value(85), tempNightDropF: const Value(10), humidity: const Value('40-60%'), bloomSeason: const Value('Year-round'), wateringNotes: const Value('Water when medium is dry. Very drought tolerant.'), fertilizingNotes: const Value('Monthly at 1/4 strength.'), difficultyLevel: const Value('Easy'), description: const Value('Reed-stem orchids with clusters of small colorful flowers. Very hardy.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Masdevallia', genus: 'Masdevallia', species: const Value('spp.'), idealLuxMin: const Value(800), idealLuxMax: const Value(2000), tempMinF: const Value(50), tempMaxF: const Value(70), tempNightDropF: const Value(10), humidity: const Value('70-90%'), bloomSeason: const Value('Spring-Summer'), wateringNotes: const Value('Keep constantly moist. Sphagnum works well.'), fertilizingNotes: const Value('Weekly at 1/4 strength.'), difficultyLevel: const Value('Advanced'), description: const Value('Cool-growing miniatures with unique triangular flowers. Need high humidity.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Bulbophyllum', genus: 'Bulbophyllum', species: const Value('spp.'), idealLuxMin: const Value(1000), idealLuxMax: const Value(3000), tempMinF: const Value(60), tempMaxF: const Value(85), tempNightDropF: const Value(10), humidity: const Value('60-80%'), bloomSeason: const Value('Varies'), wateringNotes: const Value('Keep moist year-round. Do not let dry out.'), fertilizingNotes: const Value('Biweekly at 1/4 strength.'), difficultyLevel: const Value('Moderate'), description: const Value('Largest orchid genus with bizarre, fascinating flowers. Many are fragrant.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Phragmipedium', genus: 'Phragmipedium', species: const Value('spp.'), idealLuxMin: const Value(1500), idealLuxMax: const Value(3000), tempMinF: const Value(60), tempMaxF: const Value(80), tempNightDropF: const Value(10), humidity: const Value('60-80%'), bloomSeason: const Value('Fall-Spring'), wateringNotes: const Value('Keep very moist — one of few orchids that can sit in shallow water.'), fertilizingNotes: const Value('Weekly at 1/4 strength.'), difficultyLevel: const Value('Moderate'), description: const Value('New World slipper orchids. Sequential bloomers with elegant pouched flowers.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Cambria', genus: 'Oncidium', species: const Value('(intergeneric hybrid)'), idealLuxMin: const Value(1500), idealLuxMax: const Value(3000), tempMinF: const Value(58), tempMaxF: const Value(78), tempNightDropF: const Value(10), humidity: const Value('50-60%'), bloomSeason: const Value('Fall-Winter'), wateringNotes: const Value('Water when medium is nearly dry.'), fertilizingNotes: const Value('Biweekly at 1/4 strength.'), difficultyLevel: const Value('Easy'), description: const Value('Popular intergeneric hybrids with star-shaped flowers. Widely available and forgiving.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Dracula', genus: 'Dracula', species: const Value('spp.'), idealLuxMin: const Value(500), idealLuxMax: const Value(1500), tempMinF: const Value(50), tempMaxF: const Value(68), tempNightDropF: const Value(10), humidity: const Value('80-100%'), bloomSeason: const Value('Varies'), wateringNotes: const Value('Keep constantly moist in live sphagnum.'), fertilizingNotes: const Value('Light feeding monthly.'), difficultyLevel: const Value('Advanced'), description: const Value('Cool-growing orchids with dramatic monkey-face flowers. Need very high humidity.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Brassavola', genus: 'Brassavola', species: const Value('spp.'), idealLuxMin: const Value(3000), idealLuxMax: const Value(6000), tempMinF: const Value(55), tempMaxF: const Value(85), tempNightDropF: const Value(15), humidity: const Value('40-70%'), bloomSeason: const Value('Summer-Fall'), wateringNotes: const Value('Let dry between waterings. Tolerates drought.'), fertilizingNotes: const Value('Biweekly at 1/4 strength during growth.'), difficultyLevel: const Value('Easy'), description: const Value('Lady of the night orchid. Fragrant white flowers that bloom at night.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Laelia', genus: 'Laelia', species: const Value('spp.'), idealLuxMin: const Value(3000), idealLuxMax: const Value(5000), tempMinF: const Value(55), tempMaxF: const Value(85), tempNightDropF: const Value(15), humidity: const Value('40-60%'), bloomSeason: const Value('Fall-Winter'), wateringNotes: const Value('Water well, then let dry. Good drainage essential.'), fertilizingNotes: const Value('Biweekly during growth.'), difficultyLevel: const Value('Moderate'), description: const Value('Related to Cattleya with bright colorful blooms. Many are now reclassified.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Maxillaria', genus: 'Maxillaria', species: const Value('spp.'), idealLuxMin: const Value(1500), idealLuxMax: const Value(3000), tempMinF: const Value(55), tempMaxF: const Value(80), tempNightDropF: const Value(10), humidity: const Value('50-70%'), bloomSeason: const Value('Spring'), wateringNotes: const Value('Keep evenly moist.'), fertilizingNotes: const Value('Biweekly at 1/4 strength.'), difficultyLevel: const Value('Moderate'), description: const Value('Coconut orchid — many species have a distinct coconut fragrance.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Tolumnia', genus: 'Tolumnia', species: const Value('spp.'), idealLuxMin: const Value(2000), idealLuxMax: const Value(4000), tempMinF: const Value(60), tempMaxF: const Value(85), tempNightDropF: const Value(10), humidity: const Value('50-70%'), bloomSeason: const Value('Year-round'), wateringNotes: const Value('Dry quickly between waterings. Mount on cork for best results.'), fertilizingNotes: const Value('Weekly misting with dilute fertilizer.'), difficultyLevel: const Value('Moderate'), description: const Value('Equitant oncidiums — compact miniatures with disproportionately large, colorful flower sprays.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Catasetum', genus: 'Catasetum', species: const Value('spp.'), idealLuxMin: const Value(3000), idealLuxMax: const Value(6000), tempMinF: const Value(65), tempMaxF: const Value(90), tempNightDropF: const Value(10), humidity: const Value('50-70%'), bloomSeason: const Value('Summer-Fall'), wateringNotes: const Value('Water heavily during growth. Completely stop water when leaves drop in winter.'), fertilizingNotes: const Value('Heavy feeding during growth season.'), difficultyLevel: const Value('Moderate'), description: const Value('Deciduous orchids that catapult pollen. Dramatic blooms and strict seasonal dormancy.')),
+      SpeciesProfilesCompanion.insert(commonName: 'Stanhopea', genus: 'Stanhopea', species: const Value('spp.'), idealLuxMin: const Value(2000), idealLuxMax: const Value(4000), tempMinF: const Value(55), tempMaxF: const Value(80), tempNightDropF: const Value(10), humidity: const Value('60-80%'), bloomSeason: const Value('Summer'), wateringNotes: const Value('Keep moist year-round.'), fertilizingNotes: const Value('Biweekly at 1/4 strength.'), difficultyLevel: const Value('Moderate'), description: const Value('Spectacular pendant flowers that emerge through the basket. Short-lived but dramatic and fragrant.')),
+    ];
+
+    for (final profile in profiles) {
+      await into(speciesProfiles).insert(profile);
     }
   }
 }
