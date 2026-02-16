@@ -186,7 +186,6 @@ class _AgendaScreenState extends State<AgendaScreen> {
           ),
         ),
       );
-      // Still need to trigger scroll for consistency
       _scrollToToday();
       return CustomScrollView(slivers: slivers);
     }
@@ -272,18 +271,26 @@ class _AgendaScreenState extends State<AgendaScreen> {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           sliver: SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Column(
                 children: [
                   Icon(Icons.check_circle_outline,
-                      color: AppTheme.statusCompleted.withValues(alpha: 0.6), size: 20),
-                  const SizedBox(width: 8),
+                      color: AppTheme.statusCompleted.withValues(alpha: 0.4), size: 36),
+                  const SizedBox(height: 8),
                   Text(
                     'No tasks due today',
                     style: TextStyle(
-                      color: AppTheme.textSecondary.withValues(alpha: 0.8),
-                      fontSize: 14,
+                      color: AppTheme.textSecondary.withValues(alpha: 0.7),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Your orchids are all set!',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary.withValues(alpha: 0.5),
+                      fontSize: 13,
                     ),
                   ),
                 ],
@@ -294,28 +301,42 @@ class _AgendaScreenState extends State<AgendaScreen> {
       );
     }
 
-    // Today's completed logs (things done today)
+    // Today's completed logs
     final todayLogs = recentLogs.where((log) {
       final day = DateTime(log.completedAt.year, log.completedAt.month, log.completedAt.day);
       return day == today;
     }).toList();
 
     if (todayLogs.isNotEmpty) {
+      // Centered divider label with checkmark
       slivers.add(
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
           sliver: SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 4),
-              child: Text(
-                'Completed today',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textSecondary.withValues(alpha: 0.7),
-                  letterSpacing: 0.5,
+            child: Row(
+              children: [
+                Expanded(child: Divider(color: AppTheme.statusCompleted.withValues(alpha: 0.2))),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check, size: 14, color: AppTheme.statusCompleted.withValues(alpha: 0.5)),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Completed today',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textSecondary.withValues(alpha: 0.6),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+                Expanded(child: Divider(color: AppTheme.statusCompleted.withValues(alpha: 0.2))),
+              ],
             ),
           ),
         ),
@@ -365,7 +386,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
     }
 
     // Bottom spacing for floating nav
-    slivers.add(const SliverPadding(padding: EdgeInsets.only(bottom: 16)));
+    slivers.add(const SliverPadding(padding: EdgeInsets.only(bottom: 32)));
 
     // Trigger scroll to today
     _scrollToToday();
@@ -373,7 +394,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
     return CustomScrollView(slivers: slivers);
   }
 
-  // ── Date header widget ──
+  // ── Timeline-style date header ──
   Widget _buildDateHeader(
     BuildContext context,
     DateTime day,
@@ -388,71 +409,117 @@ class _AgendaScreenState extends State<AgendaScreen> {
     final weekdayLabel = DateFormat('EEEE').format(day);
     final count = isToday ? taskCount : (isPast ? logCount : taskCount);
 
+    final nodeColor = isToday
+        ? AppTheme.primary
+        : isPast
+            ? AppTheme.statusCompleted
+            : AppTheme.statusUpcoming;
+
     return SliverToBoxAdapter(
       key: key,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-        margin: const EdgeInsets.only(top: 4),
-        decoration: BoxDecoration(
-          color: isToday
-              ? AppTheme.primary.withValues(alpha: 0.08)
-              : AppTheme.surfaceVariant.withValues(alpha: 0.5),
-        ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, isToday ? 20 : 16, 16, 8),
         child: Row(
           children: [
-            Text(
-              dayLabel,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: isToday ? AppTheme.primary : AppTheme.textPrimary,
+            // Timeline node circle
+            Container(
+              width: isToday ? 48 : 40,
+              height: isToday ? 48 : 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isToday ? AppTheme.primary : null,
+                border: !isToday
+                    ? Border.all(
+                        color: nodeColor.withValues(alpha: 0.5),
+                        width: 2,
+                      )
+                    : null,
+                boxShadow: isToday
+                    ? [
+                        BoxShadow(
+                          color: AppTheme.primary.withValues(alpha: 0.25),
+                          blurRadius: 12,
+                          spreadRadius: 2,
+                        ),
+                      ]
+                    : null,
               ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              weekdayLabel,
-              style: TextStyle(
-                fontSize: 13,
-                color: isToday
-                    ? AppTheme.primary.withValues(alpha: 0.7)
-                    : AppTheme.textSecondary,
-              ),
-            ),
-            if (isToday) ...[
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppTheme.primary,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                ),
-                child: const Text(
-                  'Today',
+              child: Center(
+                child: Text(
+                  '${day.day}',
                   style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textOnPrimary,
+                    fontSize: isToday ? 18 : 15,
+                    fontWeight: FontWeight.bold,
+                    color: isToday ? AppTheme.textOnPrimary : nodeColor,
                   ),
                 ),
               ),
-            ],
-            const Spacer(),
+            ),
+            const SizedBox(width: 12),
+            // Date text
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        weekdayLabel,
+                        style: TextStyle(
+                          fontSize: isToday ? 16 : 14,
+                          fontWeight: FontWeight.bold,
+                          color: isToday ? AppTheme.primary : AppTheme.textPrimary,
+                        ),
+                      ),
+                      if (isToday) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary,
+                            borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                          ),
+                          child: const Text(
+                            'Today',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textOnPrimary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  Text(
+                    dayLabel,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isToday
+                          ? AppTheme.primary.withValues(alpha: 0.7)
+                          : AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Count badge
             if (count > 0)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: isToday
                       ? AppTheme.primary.withValues(alpha: 0.15)
                       : isPast
-                          ? AppTheme.statusCompleted.withValues(alpha: 0.15)
-                          : AppTheme.statusUpcoming.withValues(alpha: 0.15),
+                          ? AppTheme.statusCompleted.withValues(alpha: 0.1)
+                          : AppTheme.statusUpcoming.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                 ),
                 child: Text(
                   isPast ? '$count done' : '$count task${count == 1 ? '' : 's'}',
                   style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                     color: isToday
                         ? AppTheme.primary
                         : isPast
@@ -467,7 +534,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
     );
   }
 
-  // ── Today tasks grouped by orchid (mirrors old Today screen) ──
+  // ── Today tasks grouped by orchid — hero cards with gradient headers ──
   List<Widget> _buildTodayTaskSlivers(
     BuildContext context,
     AppDatabase db,
@@ -481,61 +548,103 @@ class _AgendaScreenState extends State<AgendaScreen> {
     }
 
     final slivers = <Widget>[];
+    var orchidIndex = 0;
+
     for (final entry in grouped.entries) {
       final orchidName = orchidMap[entry.key]?.name ?? 'Unknown Orchid';
+      final delayMs = orchidIndex * 100;
 
       slivers.add(
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
           sliver: SliverToBoxAdapter(
-            child: Card(
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Orchid header
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary.withValues(alpha: 0.08),
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(AppTheme.radiusCard),
-                      ),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: Duration(milliseconds: 400 + delayMs),
+              curve: Curves.easeOut,
+              builder: (context, value, child) {
+                return Opacity(
+                  opacity: value,
+                  child: Transform.translate(
+                    offset: Offset(0, 12 * (1 - value)),
+                    child: child,
+                  ),
+                );
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.cardBackground,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+                  border: Border.all(color: AppTheme.cardBorder, width: 0.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.local_florist,
-                          color: AppTheme.primary,
+                  ],
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Gradient header strip
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [AppTheme.sliverGradientStart, AppTheme.sliverGradientEnd],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            orchidName,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.local_florist, color: AppTheme.textOnPrimary, size: 22),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              orchidName,
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.textOnPrimary,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  // Tasks
-                  ...entry.value.map((task) =>
-                      _buildTodayTaskTile(context, db, task, orchidName, activeTaskIds)),
-                ],
+                    // Task rows
+                    ...entry.value.asMap().entries.map((taskEntry) {
+                      final taskIndex = taskEntry.key;
+                      final task = taskEntry.value;
+                      return Column(
+                        children: [
+                          if (taskIndex > 0)
+                            Divider(
+                              height: 1,
+                              indent: 68,
+                              color: AppTheme.divider.withValues(alpha: 0.5),
+                            ),
+                          _buildTodayTaskRow(context, db, task, orchidName, activeTaskIds),
+                        ],
+                      );
+                    }),
+                  ],
+                ),
               ),
             ),
           ),
         ),
       );
+      orchidIndex++;
     }
 
     return slivers;
   }
 
-  Widget _buildTodayTaskTile(
+  Widget _buildTodayTaskRow(
     BuildContext context,
     AppDatabase db,
     CareTask task,
@@ -550,77 +659,125 @@ class _AgendaScreenState extends State<AgendaScreen> {
     final isWater = task.careType == CareType.water;
     final isSoaking = activeTaskIds.contains(task.id);
 
-    return ListTile(
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-        ),
-        child: Icon(icon, color: color),
-      ),
-      title: Text(
-        displayName,
-        style: TextStyle(
-          fontWeight: FontWeight.w500,
-          color: isOverdue && !isSoaking ? AppTheme.statusOverdue : null,
-        ),
-      ),
-      subtitle: isSoaking
-          ? Text(
-              'Soaking...',
-              style: TextStyle(color: AppTheme.waterBlue.withValues(alpha: 0.8)),
-            )
-          : Text(
-              isOverdue
-                  ? 'Overdue - was due ${DateFormat.MMMd().format(task.nextDue)}'
-                  : 'Due today',
-              style: TextStyle(
-                color: isOverdue
-                    ? AppTheme.statusOverdue.withValues(alpha: 0.7)
-                    : AppTheme.textSecondary,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
+        children: [
+          // 44x44 rounded square icon with gradient fill
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [color.withValues(alpha: 0.2), color.withValues(alpha: 0.08)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
+              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
             ),
-      trailing: isSoaking
-          ? Chip(
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(width: 12),
+          // Task info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  displayName,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: isOverdue && !isSoaking ? AppTheme.statusOverdue : AppTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                if (isSoaking)
+                  Text(
+                    'Soaking...',
+                    style: TextStyle(fontSize: 13, color: AppTheme.waterBlue.withValues(alpha: 0.8)),
+                  )
+                else
+                  Text(
+                    isOverdue
+                        ? 'Overdue \u00b7 ${DateFormat.MMMd().format(task.nextDue)}'
+                        : 'Due today',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isOverdue
+                          ? AppTheme.statusOverdue.withValues(alpha: 0.7)
+                          : AppTheme.textSecondary,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          // Action buttons
+          if (isSoaking)
+            Chip(
               label: const Text('Soaking'),
               backgroundColor: AppTheme.waterBlue.withValues(alpha: 0.15),
               labelStyle: const TextStyle(color: AppTheme.waterBlue, fontSize: 12),
               visualDensity: VisualDensity.compact,
             )
-          : Row(
+          else
+            Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.snooze),
-                  tooltip: 'Snooze 1 day',
-                  onPressed: () => snoozeTaskWorkflow(context, db, task),
+                _circularActionButton(
+                  Icons.snooze,
+                  AppTheme.textSecondary,
+                  'Snooze 1 day',
+                  () => snoozeTaskWorkflow(context, db, task),
                 ),
+                const SizedBox(width: 4),
                 if (isWater)
-                  IconButton(
-                    icon: const Icon(Icons.water_drop),
-                    color: AppTheme.waterBlue,
-                    tooltip: 'Start soak',
-                    onPressed: () => startSoakWorkflow(
-                        context, db, task, orchidName, _refresh),
+                  _circularActionButton(
+                    Icons.water_drop,
+                    AppTheme.waterBlue,
+                    'Start soak',
+                    () => startSoakWorkflow(context, db, task, orchidName, _refresh),
                   )
                 else
-                  IconButton(
-                    icon: const Icon(Icons.check_circle),
-                    color: AppTheme.primary,
-                    tooltip: 'Mark complete',
-                    onPressed: () =>
-                        completeTaskWorkflow(context, db, task, orchidName),
+                  _circularActionButton(
+                    Icons.check_circle,
+                    AppTheme.primary,
+                    'Mark complete',
+                    () => completeTaskWorkflow(context, db, task, orchidName),
                   ),
               ],
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _circularActionButton(
+    IconData icon,
+    Color color,
+    String tooltip,
+    VoidCallback onPressed,
+  ) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: color.withValues(alpha: 0.08),
+        shape: const CircleBorder(),
+        child: InkWell(
+          onTap: onPressed,
+          customBorder: const CircleBorder(),
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Icon(icon, color: color, size: 22),
+          ),
+        ),
+      ),
     );
   }
 }
 
 // ============================================================
-// Past care log tile (read-only)
+// Past care log tile — softer treatment, no Card wrapper
 // ============================================================
 
 class _PastLogTile extends StatelessWidget {
@@ -637,68 +794,108 @@ class _PastLogTile extends StatelessWidget {
     final displayName = AppTheme.getCareTypeDisplayName(careTypeName);
     final timeStr = DateFormat.jm().format(log.completedAt);
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 4),
-      child: ListTile(
-        dense: true,
-        leading: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-          ),
-          child: Icon(
-            log.skipped ? Icons.skip_next : icon,
-            color: color,
-            size: 20,
-          ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: AppTheme.divider.withValues(alpha: 0.4)),
         ),
-        title: Text(
-          displayName,
-          style: TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: 14,
-            color: log.skipped ? AppTheme.statusSkipped : null,
-            fontStyle: log.skipped ? FontStyle.italic : null,
-          ),
-        ),
-        subtitle: Text(
-          orchidName,
-          style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              timeStr,
-              style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
-            ),
-            if (log.skipped)
-              const Text(
-                'Skipped',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: AppTheme.statusSkipped,
-                  fontStyle: FontStyle.italic,
+      ),
+      child: Row(
+        children: [
+          // Circular icon with check overlay badge
+          Stack(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color.withValues(alpha: 0.1),
+                ),
+                child: Icon(
+                  log.skipped ? Icons.skip_next : icon,
+                  color: color.withValues(alpha: 0.7),
+                  size: 18,
                 ),
               ),
-            if (log.notes != null && log.notes!.isNotEmpty)
-              Icon(
-                Icons.notes,
-                size: 14,
-                color: AppTheme.textSecondary.withValues(alpha: 0.6),
+              if (!log.skipped)
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppTheme.statusCompleted,
+                      border: Border.all(color: AppTheme.cardBackground, width: 1.5),
+                    ),
+                    child: const Icon(Icons.check, size: 8, color: Colors.white),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  displayName,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                    color: (log.skipped ? AppTheme.statusSkipped : AppTheme.textPrimary)
+                        .withValues(alpha: 0.75),
+                    fontStyle: log.skipped ? FontStyle.italic : null,
+                  ),
+                ),
+                Text(
+                  orchidName,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textSecondary.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                timeStr,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppTheme.textSecondary.withValues(alpha: 0.7),
+                ),
               ),
-          ],
-        ),
+              if (log.skipped)
+                Text(
+                  'Skipped',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: AppTheme.statusSkipped.withValues(alpha: 0.7),
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              if (log.notes != null && log.notes!.isNotEmpty)
+                Icon(
+                  Icons.notes,
+                  size: 14,
+                  color: AppTheme.textSecondary.withValues(alpha: 0.4),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
 // ============================================================
-// Milestone banner (dismissable)
+// Milestone banner — celebratory with gradient and glow
 // ============================================================
 
 class _MilestoneBanner extends StatelessWidget {
@@ -709,36 +906,70 @@ class _MilestoneBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isBlooom = milestone.type.startsWith('bloom');
+    final isBloom = milestone.type.startsWith('bloom');
     final isAnniversary = milestone.type.startsWith('anniversary');
-    final color = isBlooom
+    final color = isBloom
         ? AppTheme.bloom
         : isAnniversary
             ? AppTheme.statusNeedsCare
             : AppTheme.statusCompleted;
-    final icon = isBlooom
+    final icon = isBloom
         ? Icons.local_florist
         : isAnniversary
             ? Icons.celebration
             : Icons.emoji_events;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      color: color.withValues(alpha: 0.08),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color.withValues(alpha: 0.12), color.withValues(alpha: 0.04)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+        padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
         child: Row(
           children: [
-            Icon(icon, color: color, size: 24),
+            // Glowing circle icon
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color.withValues(alpha: 0.15),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 milestone.message,
-                style: TextStyle(color: color, fontWeight: FontWeight.w500, fontSize: 13),
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
               ),
             ),
             IconButton(
-              icon: Icon(Icons.close, size: 18, color: color.withValues(alpha: 0.6)),
+              icon: Icon(Icons.close, size: 18, color: color.withValues(alpha: 0.5)),
               onPressed: () => db.dismissMilestone(milestone.id),
               tooltip: 'Dismiss',
               visualDensity: VisualDensity.compact,
@@ -751,7 +982,7 @@ class _MilestoneBanner extends StatelessWidget {
 }
 
 // ============================================================
-// Health check-in prompts
+// Health check-in — warm pink container, no nested Cards
 // ============================================================
 
 class _HealthCheckInSection extends StatelessWidget {
@@ -781,64 +1012,91 @@ class _HealthCheckInSection extends StatelessWidget {
     if (neglectedOrchids.isEmpty) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(left: 4, bottom: 8),
-            child: Row(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.bloom.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+          border: Border.all(color: AppTheme.bloom.withValues(alpha: 0.12)),
+        ),
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Icon(Icons.favorite_border, size: 16, color: AppTheme.bloom),
-                SizedBox(width: 6),
-                Text(
+                Icon(Icons.favorite_border, size: 18, color: AppTheme.bloom.withValues(alpha: 0.8)),
+                const SizedBox(width: 8),
+                const Text(
                   'Check in',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: AppTheme.bloom,
                   ),
                 ),
               ],
             ),
-          ),
-          ...neglectedOrchids.map((orchid) => Card(
-            margin: const EdgeInsets.only(bottom: 6),
-            color: AppTheme.bloom.withValues(alpha: 0.06),
-            child: ListTile(
-              dense: true,
-              onTap: () => Navigator.push(
-                context,
-                OrchidPageRoute(builder: (_) => OrchidDetailScreen(orchidId: orchid.id)),
-              ),
-              leading: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: AppTheme.bloom.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                ),
-                child: const Icon(Icons.local_florist, color: AppTheme.bloom, size: 20),
-              ),
-              title: Text(
-                'How is ${orchid.name} doing?',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-              ),
-              subtitle: const Text(
-                'No recent care logged',
-                style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
-              ),
-              trailing: const Icon(Icons.chevron_right, size: 18, color: AppTheme.textSecondary),
-            ),
-          )),
-        ],
+            const SizedBox(height: 10),
+            ...neglectedOrchids.asMap().entries.map((entry) {
+              final orchid = entry.value;
+              final isLast = entry.key == neglectedOrchids.length - 1;
+              return Column(
+                children: [
+                  InkWell(
+                    onTap: () => Navigator.push(
+                      context,
+                      OrchidPageRoute(builder: (_) => OrchidDetailScreen(orchidId: orchid.id)),
+                    ),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppTheme.bloom.withValues(alpha: 0.1),
+                            ),
+                            child: const Icon(Icons.local_florist, color: AppTheme.bloom, size: 16),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'How is ${orchid.name} doing?',
+                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                                ),
+                                const Text(
+                                  'No recent care logged',
+                                  style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right, size: 18, color: AppTheme.textSecondary),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (!isLast)
+                    Divider(height: 1, color: AppTheme.bloom.withValues(alpha: 0.1)),
+                ],
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
 }
 
 // ============================================================
-// Upcoming task tile (read-only, future)
+// Upcoming task tile — lighter treatment with blue left border
 // ============================================================
 
 class _UpcomingTaskTile extends StatelessWidget {
@@ -862,35 +1120,60 @@ class _UpcomingTaskTile extends StatelessWidget {
     final daysAway = dueDay.difference(today).inDays;
     final dueLabel = daysAway == 1 ? 'tomorrow' : 'in $daysAway days';
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 4),
-      child: ListTile(
-        dense: true,
-        leading: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+      margin: const EdgeInsets.only(bottom: 2),
+      decoration: const BoxDecoration(
+        border: Border(
+          left: BorderSide(color: Color(0x4D6BAFE5), width: 2),
+        ),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(width: 8),
+          // Circular icon with dashed-feel border
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color.withValues(alpha: 0.08),
+              border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
+            ),
+            child: Icon(icon, color: color.withValues(alpha: 0.7), size: 18),
           ),
-          child: Icon(icon, color: color, size: 20),
-        ),
-        title: Text(
-          displayName,
-          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
-        ),
-        subtitle: Text(
-          orchidName,
-          style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-        ),
-        trailing: Text(
-          dueLabel,
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppTheme.statusUpcoming,
-            fontWeight: FontWeight.w500,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  displayName,
+                  style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+                ),
+                Text(
+                  orchidName,
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                ),
+              ],
+            ),
           ),
-        ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.schedule, size: 14, color: AppTheme.statusUpcoming.withValues(alpha: 0.6)),
+              const SizedBox(width: 4),
+              Text(
+                dueLabel,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.statusUpcoming,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

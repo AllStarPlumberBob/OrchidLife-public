@@ -2,12 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:image_picker/image_picker.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:android_intent_plus/android_intent.dart';
-import 'package:android_intent_plus/flag.dart';
 import 'dart:async';
-import 'dart:io' show File, Platform;
+import 'dart:io' show File;
+import '../services/ai_handoff_service.dart';
 import '../database/database.dart';
 import '../theme/app_theme.dart';
 import '../services/light_sensor_service.dart';
@@ -726,28 +723,16 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
                         _isTextMode ? () => _searchGoogle() : () => _openGoogleLens(),
                       ),
                       _buildAIButton(
-                        'ChatGPT',
-                        Icons.chat_bubble,
-                        const Color(0xFF10A37F),
-                        () => _openChatGPT(),
-                      ),
-                      _buildAIButton(
-                        'Gemini',
-                        Icons.auto_awesome,
-                        AppTheme.statusUpcoming,
-                        () => _openGemini(),
-                      ),
-                      _buildAIButton(
                         'Claude',
                         Icons.psychology,
                         AppTheme.fertilizerOrange,
                         () => _openClaude(),
                       ),
                       _buildAIButton(
-                        'Assistant',
-                        Icons.mic,
-                        AppTheme.statusOverdue,
-                        () => _launchVoiceAssistant(),
+                        'Perplexity',
+                        Icons.travel_explore,
+                        const Color(0xFF20808D),
+                        () => _openPerplexity(),
                       ),
                       if (!_isTextMode)
                         _buildAIButton(
@@ -941,83 +926,30 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
     final searchTerm = textDescription.isNotEmpty
         ? textDescription
         : 'orchid ${_selectedProblem ?? 'problem'} treatment how to fix';
-    final query = Uri.encodeComponent(searchTerm);
-    final url = Uri.parse('https://www.google.com/search?q=$query');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
-  }
-
-  Future<void> _launchVoiceAssistant() async {
-    final textDescription = _textDescriptionController.text.trim();
-    final query = textDescription.isNotEmpty
-        ? textDescription
-        : _selectedProblem != null
-            ? 'How to fix $_selectedProblem on my orchid'
-            : 'Help me with my orchid';
-
-    // Only use Android intent on Android
-    if (Platform.isAndroid) {
-      final intent = AndroidIntent(
-        action: 'android.intent.action.WEB_SEARCH',
-        arguments: {'query': query},
-        flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
-      );
-
-      try {
-        await intent.launch();
-        return;
-      } catch (e) {
-        // Fall through to Google search fallback
-      }
-    }
-
-    // Fallback to Google search for iOS or if intent fails
-    final encodedQuery = Uri.encodeComponent(query);
-    final url = Uri.parse('https://www.google.com/search?q=$encodedQuery');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
+    await AIHandoffService.searchGoogle(searchTerm);
   }
 
   Future<void> _openGoogleLens() async {
-    final url = Uri.parse('https://lens.google.com');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
+    final opened = await AIHandoffService.openGoogleLens(context);
+    if (!mounted || !opened) return;
     _showFollowUpInstructions('Google Lens');
   }
 
-  Future<void> _openChatGPT() async {
-    final url = Uri.parse('https://chat.openai.com');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
-    _showFollowUpInstructions('ChatGPT');
-  }
-
-  Future<void> _openGemini() async {
-    final url = Uri.parse('https://gemini.google.com');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
-    _showFollowUpInstructions('Gemini');
-  }
-
   Future<void> _openClaude() async {
-    final url = Uri.parse('https://claude.ai');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
+    final opened = await AIHandoffService.openClaude(context);
+    if (!mounted || !opened) return;
     _showFollowUpInstructions('Claude');
+  }
+
+  Future<void> _openPerplexity() async {
+    final opened = await AIHandoffService.openPerplexity(context);
+    if (!mounted || !opened) return;
+    _showFollowUpInstructions('Perplexity');
   }
 
   Future<void> _shareToAny() async {
     if (_selectedImage != null) {
-      await Share.shareXFiles(
-        [_selectedImage!],
-        text: _promptController.text,
-      );
+      await AIHandoffService.shareToAny(_selectedImage!, _promptController.text);
     }
   }
 

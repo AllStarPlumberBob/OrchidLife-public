@@ -5,41 +5,101 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
 
-/// Extracted AI handoff methods shared between Tools screen and Add Wizard.
+/// Centralized AI handoff methods shared between Tools screen and Add Wizard.
+///
+/// Each `open*` method returns `true` if the external app/URL was launched
+/// successfully, or `false` if all fallbacks failed (also shows an error
+/// snackbar via the provided [BuildContext]).
 class AIHandoffService {
-  /// Open Google Lens for image identification
-  static Future<void> openGoogleLens(BuildContext context) async {
-    final url = Uri.parse('https://lens.google.com');
+  /// Open Google Lens for image identification (native app on Android).
+  static Future<bool> openGoogleLens(BuildContext context) async {
+    if (Platform.isAndroid) {
+      // Try Google Lens app directly
+      try {
+        const intent = AndroidIntent(
+          action: 'android.intent.action.MAIN',
+          package: 'com.google.ar.lens',
+          flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
+        );
+        await intent.launch();
+        return true;
+      } catch (_) {}
+      // Fallback: Google app's lens activity
+      try {
+        const intent = AndroidIntent(
+          action: 'android.intent.action.VIEW',
+          data: 'google://lens',
+          flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
+        );
+        await intent.launch();
+        return true;
+      } catch (_) {}
+    }
+    // Final fallback: Google Images search
+    final url = Uri.parse('https://images.google.com');
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
+      return true;
     }
+    if (context.mounted) {
+      _showError(context, 'Could not open Google Lens. Please install the Google app.');
+    }
+    return false;
   }
 
-  /// Open ChatGPT
-  static Future<void> openChatGPT(BuildContext context) async {
-    final url = Uri.parse('https://chat.openai.com');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
+  /// Open Claude (native Android app, then web fallback).
+  static Future<bool> openClaude(BuildContext context) async {
+    if (Platform.isAndroid) {
+      try {
+        const intent = AndroidIntent(
+          action: 'android.intent.action.VIEW',
+          data: 'https://claude.ai',
+          package: 'com.anthropic.claude',
+          flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
+        );
+        await intent.launch();
+        return true;
+      } catch (_) {}
     }
-  }
-
-  /// Open Google Gemini
-  static Future<void> openGemini(BuildContext context) async {
-    final url = Uri.parse('https://gemini.google.com');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
-  }
-
-  /// Open Claude
-  static Future<void> openClaude(BuildContext context) async {
+    // Fallback to web
     final url = Uri.parse('https://claude.ai');
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
+      return true;
     }
+    if (context.mounted) {
+      _showError(context, 'Could not open Claude. Please install the app or check your browser.');
+    }
+    return false;
   }
 
-  /// Search Google with a text query
+  /// Open Perplexity (native Android app, then web fallback).
+  static Future<bool> openPerplexity(BuildContext context) async {
+    if (Platform.isAndroid) {
+      try {
+        const intent = AndroidIntent(
+          action: 'android.intent.action.VIEW',
+          data: 'https://www.perplexity.ai',
+          package: 'ai.perplexity.app.android',
+          flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
+        );
+        await intent.launch();
+        return true;
+      } catch (_) {}
+    }
+    // Fallback to web
+    final url = Uri.parse('https://www.perplexity.ai');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+      return true;
+    }
+    if (context.mounted) {
+      _showError(context, 'Could not open Perplexity. Please install the app or check your browser.');
+    }
+    return false;
+  }
+
+  /// Search Google with a text query.
   static Future<void> searchGoogle(String query) async {
     final encoded = Uri.encodeComponent(query);
     final url = Uri.parse('https://www.google.com/search?q=$encoded');
@@ -48,36 +108,30 @@ class AIHandoffService {
     }
   }
 
-  /// Launch voice assistant / web search
-  static Future<void> launchVoiceAssistant(String query) async {
-    if (Platform.isAndroid) {
-      final intent = AndroidIntent(
-        action: 'android.intent.action.WEB_SEARCH',
-        arguments: {'query': query},
-        flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
-      );
-      try {
-        await intent.launch();
-        return;
-      } catch (_) {
-        // Fall through to Google
-      }
-    }
-    await searchGoogle(query);
-  }
-
-  /// Share a photo with text to any app
+  /// Share a photo with text to any app.
   static Future<void> shareToAny(XFile image, String text) async {
     await Share.shareXFiles([image], text: text);
   }
 
-  /// Show a follow-up snackbar after opening an external service
+  /// Show a follow-up snackbar after successfully opening an external service.
   static void showFollowUp(BuildContext context, String service, {String? message}) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message ?? 'Opening $service... Upload your photo and ask your question there.'),
         duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  /// Show an error snackbar when all launch fallbacks fail.
+  static void _showError(BuildContext context, String message) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red.shade700,
+        duration: const Duration(seconds: 4),
       ),
     );
   }

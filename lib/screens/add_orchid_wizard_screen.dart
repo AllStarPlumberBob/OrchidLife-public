@@ -99,12 +99,21 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
+          icon: const Icon(Icons.arrow_back, color: AppTheme.textOnPrimary),
           onPressed: _back,
         ),
-        title: const Text('Add Orchid', style: TextStyle(color: AppTheme.textPrimary)),
-        backgroundColor: AppTheme.background,
+        title: const Text('Add Orchid', style: TextStyle(color: AppTheme.textOnPrimary)),
+        backgroundColor: AppTheme.sliverGradientStart,
         elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppTheme.sliverGradientStart, AppTheme.sliverGradientEnd],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
       ),
       body: Column(
         children: [
@@ -144,7 +153,7 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
     return Container(
       padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + MediaQuery.of(context).padding.bottom),
       decoration: const BoxDecoration(
-        color: AppTheme.surface,
+        color: AppTheme.background,
         border: Border(top: BorderSide(color: AppTheme.divider)),
       ),
       child: Row(
@@ -336,20 +345,31 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
               runSpacing: 8,
               children: [
                 OutlinedButton.icon(
-                  onPressed: () {
-                    AIHandoffService.openGoogleLens(context);
+                  onPressed: () async {
+                    final opened = await AIHandoffService.openGoogleLens(context);
+                    if (!mounted || !opened) return;
                     AIHandoffService.showFollowUp(context, 'Google Lens', message: 'Opening Google Lens... Upload your orchid photo to identify the species.');
                   },
                   icon: const Icon(Icons.search, color: AppTheme.statusUpcoming),
                   label: const Text('Google Lens'),
                 ),
                 OutlinedButton.icon(
-                  onPressed: () {
-                    AIHandoffService.openChatGPT(context);
-                    AIHandoffService.showFollowUp(context, 'ChatGPT', message: 'Opening ChatGPT... Upload your orchid photo and ask "What orchid species is this?"');
+                  onPressed: () async {
+                    final opened = await AIHandoffService.openClaude(context);
+                    if (!mounted || !opened) return;
+                    AIHandoffService.showFollowUp(context, 'Claude', message: 'Opening Claude... Upload your orchid photo and ask "What orchid species is this?"');
                   },
-                  icon: const Icon(Icons.chat_bubble, color: Color(0xFF10A37F)),
-                  label: const Text('ChatGPT'),
+                  icon: const Icon(Icons.psychology, color: AppTheme.fertilizerOrange),
+                  label: const Text('Claude'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final opened = await AIHandoffService.openPerplexity(context);
+                    if (!mounted || !opened) return;
+                    AIHandoffService.showFollowUp(context, 'Perplexity', message: 'Opening Perplexity... Upload your orchid photo and ask "What orchid species is this?"');
+                  },
+                  icon: const Icon(Icons.travel_explore, color: Color(0xFF20808D)),
+                  label: const Text('Perplexity'),
                 ),
               ],
             ),
@@ -366,31 +386,68 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
                 final isSelected = _speciesProfileId == sp.id;
                 return Card(
                   color: isSelected ? AppTheme.primary.withValues(alpha: 0.1) : null,
-                  child: ListTile(
-                    title: Text(
-                      sp.commonName,
-                      style: TextStyle(
-                        fontWeight: isSelected ? FontWeight.bold : null,
-                        color: isSelected ? AppTheme.primary : null,
-                      ),
-                    ),
-                    subtitle: Text(sp.genus),
-                    trailing: isSelected
-                        ? const Icon(Icons.check_circle, color: AppTheme.primary)
-                        : Text(
-                            sp.difficultyLevel ?? '',
-                            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-                          ),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
                     onTap: () {
                       setState(() {
                         _speciesProfileId = isSelected ? null : sp.id;
                         if (!isSelected) {
                           _varietyController.text = sp.genus;
-                          // Pre-fill care based on species
                           _prefillCareFromSpecies(sp);
                         }
                       });
                     },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      child: Row(
+                        children: [
+                          // Orchid type thumbnail
+                          Container(
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? AppTheme.primary.withValues(alpha: 0.12)
+                                  : AppTheme.surfaceVariant,
+                              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: Image.asset(
+                              'assets/orchid_types/${sp.genus.toLowerCase().trim()}.webp',
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Icon(
+                                Icons.local_florist,
+                                color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+                                size: 28,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  sp.commonName,
+                                  style: TextStyle(
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                    fontSize: 15,
+                                    color: isSelected ? AppTheme.primary : null,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${sp.genus}${sp.difficultyLevel != null ? ' \u00b7 ${sp.difficultyLevel}' : ''}',
+                                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (isSelected)
+                            const Icon(Icons.check_circle, color: AppTheme.primary),
+                        ],
+                      ),
+                    ),
                   ),
                 );
               },
@@ -553,24 +610,37 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
                   runSpacing: 8,
                   children: [
                     OutlinedButton.icon(
-                      onPressed: () {
-                        AIHandoffService.openChatGPT(context);
-                        AIHandoffService.showFollowUp(context, 'ChatGPT',
-                            message: 'Opening ChatGPT... Ask "Is my orchid healthy? What do you notice?"');
+                      onPressed: () async {
+                        final opened = await AIHandoffService.openGoogleLens(context);
+                        if (!mounted || !opened) return;
+                        AIHandoffService.showFollowUp(context, 'Google Lens',
+                            message: 'Opening Google Lens... Upload your orchid photo for a health check.');
                         setState(() => _healthCheckDone = true);
                       },
-                      icon: const Icon(Icons.chat_bubble, color: Color(0xFF10A37F)),
-                      label: const Text('ChatGPT'),
+                      icon: const Icon(Icons.search, color: AppTheme.statusUpcoming),
+                      label: const Text('Google'),
                     ),
                     OutlinedButton.icon(
-                      onPressed: () {
-                        AIHandoffService.openGemini(context);
-                        AIHandoffService.showFollowUp(context, 'Gemini',
-                            message: 'Opening Gemini... Upload your photo for a health assessment.');
+                      onPressed: () async {
+                        final opened = await AIHandoffService.openClaude(context);
+                        if (!mounted || !opened) return;
+                        AIHandoffService.showFollowUp(context, 'Claude',
+                            message: 'Opening Claude... Upload your photo and ask "Is my orchid healthy?"');
                         setState(() => _healthCheckDone = true);
                       },
-                      icon: const Icon(Icons.auto_awesome, color: AppTheme.statusUpcoming),
-                      label: const Text('Gemini'),
+                      icon: const Icon(Icons.psychology, color: AppTheme.fertilizerOrange),
+                      label: const Text('Claude'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final opened = await AIHandoffService.openPerplexity(context);
+                        if (!mounted || !opened) return;
+                        AIHandoffService.showFollowUp(context, 'Perplexity',
+                            message: 'Opening Perplexity... Upload your photo for a health assessment.');
+                        setState(() => _healthCheckDone = true);
+                      },
+                      icon: const Icon(Icons.travel_explore, color: Color(0xFF20808D)),
+                      label: const Text('Perplexity'),
                     ),
                   ],
                 ),
