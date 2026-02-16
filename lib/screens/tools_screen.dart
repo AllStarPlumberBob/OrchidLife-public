@@ -930,19 +930,30 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
   }
 
   Future<void> _openGoogleLens() async {
-    final opened = await AIHandoffService.openGoogleLens(context);
+    final opened = await AIHandoffService.openGoogleLens(
+      context,
+      imagePath: _selectedImage?.path,
+    );
     if (!mounted || !opened) return;
     _showFollowUpInstructions('Google Lens');
   }
 
   Future<void> _openClaude() async {
-    final opened = await AIHandoffService.openClaude(context);
+    final opened = await AIHandoffService.openClaude(
+      context,
+      imagePath: _selectedImage?.path,
+      prompt: _promptController.text,
+    );
     if (!mounted || !opened) return;
     _showFollowUpInstructions('Claude');
   }
 
   Future<void> _openPerplexity() async {
-    final opened = await AIHandoffService.openPerplexity(context);
+    final opened = await AIHandoffService.openPerplexity(
+      context,
+      imagePath: _selectedImage?.path,
+      prompt: _promptController.text,
+    );
     if (!mounted || !opened) return;
     _showFollowUpInstructions('Perplexity');
   }

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Cache directory where image_picker stores picked images -->
+    <cache-path name="cache" path="." />
+    <!-- External cache for images -->
+    <external-cache-path name="external_cache" path="." />
+    <!-- App-internal files -->
+    <files-path name="files" path="." />
+</paths>

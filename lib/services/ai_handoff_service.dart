@@ -12,17 +12,40 @@ import 'package:android_intent_plus/flag.dart';
 /// successfully, or `false` if all fallbacks failed (also shows an error
 /// snackbar via the provided [BuildContext]).
 class AIHandoffService {
-  /// Try to launch a native Android app by package name.
-  /// Skips canResolveActivity() — on Android 11+ it returns false even when
-  /// the app is installed due to package visibility restrictions. Instead we
-  /// just attempt the launch and catch PlatformException on failure.
-  static Future<bool> _tryLaunchNativeApp(String packageName) async {
+  static const _shareChannel = MethodChannel('com.orchidlife.orchidlife/share');
+
+  /// Share an image + text directly to a specific Android app via ACTION_SEND.
+  /// Returns true if the share intent was launched successfully.
+  static Future<bool> _shareImageToPackage({
+    required String filePath,
+    required String packageName,
+    String text = '',
+    String mimeType = 'image/*',
+  }) async {
+    if (!Platform.isAndroid) return false;
+    try {
+      final result = await _shareChannel.invokeMethod('shareImageToPackage', {
+        'filePath': filePath,
+        'packageName': packageName,
+        'text': text,
+        'mimeType': mimeType,
+      });
+      return result == true;
+    } on PlatformException {
+      return false;
+    }
+  }
+
+  /// Launch a specific Android activity by package + class name (explicit intent).
+  /// This avoids the "Complete action using" chooser dialog entirely.
+  static Future<bool> _launchActivity(String packageName, String activityClass) async {
     if (!Platform.isAndroid) return false;
     try {
       final intent = AndroidIntent(
         action: 'android.intent.action.MAIN',
         category: 'android.intent.category.LAUNCHER',
         package: packageName,
+        componentName: activityClass,
         flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
       );
       await intent.launch();
@@ -33,24 +56,32 @@ class AIHandoffService {
   }
 
   /// Open Google Lens for image identification (native app on Android).
-  static Future<bool> openGoogleLens(BuildContext context) async {
+  /// If [imagePath] is provided, shares the image directly to Lens.
+  static Future<bool> openGoogleLens(BuildContext context, {String? imagePath}) async {
     if (Platform.isAndroid) {
-      // Try Google Lens app directly
-      if (await _tryLaunchNativeApp('com.google.ar.lens')) return true;
-
-      // Fallback: Google app's lens deep link (skip canResolveActivity)
-      try {
-        const intent = AndroidIntent(
-          action: 'android.intent.action.VIEW',
-          data: 'google://lens',
-          package: 'com.google.android.googlequicksearchbox',
-          flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
-        );
-        await intent.launch();
-        return true;
-      } on PlatformException {
-        // App not installed or can't handle the intent
+      // If we have an image, share it directly to Google Lens
+      if (imagePath != null) {
+        if (await _shareImageToPackage(
+          filePath: imagePath,
+          packageName: 'com.google.ar.lens',
+        )) return true;
+        // Fallback: share to Google app (which includes Lens)
+        if (await _shareImageToPackage(
+          filePath: imagePath,
+          packageName: 'com.google.android.googlequicksearchbox',
+        )) return true;
       }
+
+      // No image — just launch the app
+      if (await _launchActivity(
+        'com.google.ar.lens',
+        'com.google.vr.apps.ornament.app.lens.LensLauncherActivity',
+      )) return true;
+
+      if (await _launchActivity(
+        'com.google.android.googlequicksearchbox',
+        'com.google.android.apps.lens.MainActivity',
+      )) return true;
     }
     // Final fallback: Google Images search
     final url = Uri.parse('https://images.google.com');
@@ -65,8 +96,21 @@ class AIHandoffService {
   }
 
   /// Open Claude (native Android app, then web fallback).
-  static Future<bool> openClaude(BuildContext context) async {
-    if (await _tryLaunchNativeApp('com.anthropic.claude')) return true;
+  /// If [imagePath] and [prompt] are provided, shares the image + prompt directly.
+  static Future<bool> openClaude(BuildContext context, {String? imagePath, String? prompt}) async {
+    if (Platform.isAndroid && imagePath != null) {
+      if (await _shareImageToPackage(
+        filePath: imagePath,
+        packageName: 'com.anthropic.claude',
+        text: prompt ?? '',
+      )) return true;
+    }
+
+    // No image — just launch the app
+    if (await _launchActivity(
+      'com.anthropic.claude',
+      'com.anthropic.claude.mainactivity.MainActivity',
+    )) return true;
 
     // Fallback to web
     final url = Uri.parse('https://claude.ai');
@@ -81,8 +125,21 @@ class AIHandoffService {
   }
 
   /// Open Perplexity (native Android app, then web fallback).
-  static Future<bool> openPerplexity(BuildContext context) async {
-    if (await _tryLaunchNativeApp('ai.perplexity.app.android')) return true;
+  /// If [imagePath] and [prompt] are provided, shares the image + prompt directly.
+  static Future<bool> openPerplexity(BuildContext context, {String? imagePath, String? prompt}) async {
+    if (Platform.isAndroid && imagePath != null) {
+      if (await _shareImageToPackage(
+        filePath: imagePath,
+        packageName: 'ai.perplexity.app.android',
+        text: prompt ?? '',
+      )) return true;
+    }
+
+    // No image — just launch the app
+    if (await _launchActivity(
+      'ai.perplexity.app.android',
+      'ai.perplexity.app.android.ui.main.MainActivity',
+    )) return true;
 
     // Fallback to web
     final url = Uri.parse('https://www.perplexity.ai');
