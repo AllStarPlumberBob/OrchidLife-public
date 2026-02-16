@@ -78,5 +78,11 @@
         <intent>
             <action android:name="android.intent.action.WEB_SEARCH"/>
         </intent>
+        <!-- AI handoff: native app packages (Android 11+ package visibility) -->
+        <package android:name="com.google.ar.lens" />
+        <package android:name="com.anthropic.claude" />
+        <package android:name="ai.perplexity.app.android" />
+        <!-- Google app fallback for Lens -->
+        <package android:name="com.google.android.googlequicksearchbox" />
     </queries>
 </manifest>

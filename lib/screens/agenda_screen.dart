@@ -557,8 +557,8 @@ class _AgendaScreenState extends State<AgendaScreen> {
 
     switch (type) {
       case _DateSectionType.past:
-        gradientStart = AppTheme.statusCompleted;
-        gradientEnd = AppTheme.statusCompleted.withValues(alpha: 0.7);
+        gradientStart = AppTheme.secondary;
+        gradientEnd = AppTheme.secondary.withValues(alpha: 0.7);
         countLabel = '$count done';
       case _DateSectionType.future:
         gradientStart = AppTheme.statusUpcoming;

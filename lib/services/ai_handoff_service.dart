@@ -11,28 +11,43 @@ import 'package:android_intent_plus/flag.dart';
 /// successfully, or `false` if all fallbacks failed (also shows an error
 /// snackbar via the provided [BuildContext]).
 class AIHandoffService {
+  /// Try to launch a native Android app by package name using MAIN/LAUNCHER.
+  /// Returns true if the app was found and launched, false otherwise.
+  static Future<bool> _tryLaunchNativeApp(String packageName) async {
+    if (!Platform.isAndroid) return false;
+    final intent = AndroidIntent(
+      action: 'android.intent.action.MAIN',
+      category: 'android.intent.category.LAUNCHER',
+      package: packageName,
+      flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
+    );
+    final canResolve = await intent.canResolveActivity();
+    if (canResolve == true) {
+      await intent.launch();
+      return true;
+    }
+    return false;
+  }
+
   /// Open Google Lens for image identification (native app on Android).
   static Future<bool> openGoogleLens(BuildContext context) async {
     if (Platform.isAndroid) {
       // Try Google Lens app directly
-      try {
-        const intent = AndroidIntent(
-          action: 'android.intent.action.MAIN',
-          package: 'com.google.ar.lens',
-          flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
-        );
-        await intent.launch();
-        return true;
-      } catch (_) {}
-      // Fallback: Google app's lens activity
+      if (await _tryLaunchNativeApp('com.google.ar.lens')) return true;
+
+      // Fallback: Google app's lens deep link
       try {
         const intent = AndroidIntent(
           action: 'android.intent.action.VIEW',
           data: 'google://lens',
+          package: 'com.google.android.googlequicksearchbox',
           flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
         );
-        await intent.launch();
-        return true;
+        final canResolve = await intent.canResolveActivity();
+        if (canResolve == true) {
+          await intent.launch();
+          return true;
+        }
       } catch (_) {}
     }
     // Final fallback: Google Images search
@@ -49,18 +64,8 @@ class AIHandoffService {
 
   /// Open Claude (native Android app, then web fallback).
   static Future<bool> openClaude(BuildContext context) async {
-    if (Platform.isAndroid) {
-      try {
-        const intent = AndroidIntent(
-          action: 'android.intent.action.VIEW',
-          data: 'https://claude.ai',
-          package: 'com.anthropic.claude',
-          flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
-        );
-        await intent.launch();
-        return true;
-      } catch (_) {}
-    }
+    if (await _tryLaunchNativeApp('com.anthropic.claude')) return true;
+
     // Fallback to web
     final url = Uri.parse('https://claude.ai');
     if (await canLaunchUrl(url)) {
@@ -75,18 +80,8 @@ class AIHandoffService {
 
   /// Open Perplexity (native Android app, then web fallback).
   static Future<bool> openPerplexity(BuildContext context) async {
-    if (Platform.isAndroid) {
-      try {
-        const intent = AndroidIntent(
-          action: 'android.intent.action.VIEW',
-          data: 'https://www.perplexity.ai',
-          package: 'ai.perplexity.app.android',
-          flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
-        );
-        await intent.launch();
-        return true;
-      } catch (_) {}
-    }
+    if (await _tryLaunchNativeApp('ai.perplexity.app.android')) return true;
+
     // Fallback to web
     final url = Uri.parse('https://www.perplexity.ai');
     if (await canLaunchUrl(url)) {

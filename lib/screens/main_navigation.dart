@@ -61,7 +61,7 @@ class _MainNavigationState extends State<MainNavigation> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
-    final navTotalHeight = 64 + AppTheme.floatingNavMarginB + bottomInset;
+    final navTotalHeight = AppTheme.floatingNavHeight + AppTheme.floatingNavMarginB + bottomInset;
 
     return Scaffold(
       body: Stack(

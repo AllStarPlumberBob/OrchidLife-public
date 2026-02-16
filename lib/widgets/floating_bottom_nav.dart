@@ -11,6 +11,13 @@ class FloatingBottomNav extends StatelessWidget {
     required this.onTap,
   });
 
+  static const _items = <_NavItem>[
+    _NavItem(Icons.calendar_month_outlined, Icons.calendar_month, 'Agenda'),
+    _NavItem(Icons.local_florist_outlined, Icons.local_florist, 'Orchids'),
+    _NavItem(Icons.handyman_outlined, Icons.handyman, 'Tools'),
+    _NavItem(Icons.settings_outlined, Icons.settings, 'Settings'),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
@@ -21,6 +28,7 @@ class FloatingBottomNav extends StatelessWidget {
         right: AppTheme.floatingNavMarginH,
         bottom: AppTheme.floatingNavMarginB + bottomPadding,
       ),
+      height: AppTheme.floatingNavHeight,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [AppTheme.primaryDark, AppTheme.primary, AppTheme.sliverGradientEnd],
@@ -36,35 +44,61 @@ class FloatingBottomNav extends StatelessWidget {
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppTheme.floatingNavRadius),
-        child: NavigationBar(
-          selectedIndex: currentIndex,
-          onDestinationSelected: onTap,
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.calendar_month_outlined),
-              selectedIcon: Icon(Icons.calendar_month),
-              label: 'Agenda',
+      child: Row(
+        children: List.generate(_items.length, (i) {
+          final item = _items[i];
+          final selected = i == currentIndex;
+          return Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => onTap(i),
+              child: Center(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeInOut,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? Colors.white.withValues(alpha: 0.2)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        selected ? item.selectedIcon : item.icon,
+                        size: 24,
+                        color: selected
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.7),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        item.label,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                          color: selected
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
-            NavigationDestination(
-              icon: Icon(Icons.local_florist_outlined),
-              selectedIcon: Icon(Icons.local_florist),
-              label: 'Orchids',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.handyman_outlined),
-              selectedIcon: Icon(Icons.handyman),
-              label: 'Tools',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.settings_outlined),
-              selectedIcon: Icon(Icons.settings),
-              label: 'Settings',
-            ),
-          ],
-        ),
+          );
+        }),
       ),
     );
   }
+}
+
+class _NavItem {
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  const _NavItem(this.icon, this.selectedIcon, this.label);
 }
