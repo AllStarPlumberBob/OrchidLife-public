@@ -26,11 +26,12 @@ class ToolsScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                _buildToolCard(
+                // Primary tools — larger icons, gradient accent strip
+                _buildPrimaryToolCard(
                   context,
                   icon: Icons.light_mode,
                   title: 'Light Meter',
-                  subtitle: 'Measure light levels for optimal placement',
+                  subtitle: 'Measure light levels for optimal orchid placement',
                   color: AppTheme.statusNeedsCare,
                   onTap: () => Navigator.push(
                     context,
@@ -38,18 +39,19 @@ class ToolsScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                _buildToolCard(
+                _buildPrimaryToolCard(
                   context,
                   icon: Icons.camera_alt,
                   title: 'AI Plant Doctor',
-                  subtitle: 'Take a photo and get expert diagnosis',
+                  subtitle: 'Take a photo and get expert diagnosis from AI',
                   color: AppTheme.primary,
                   onTap: () => Navigator.push(
                     context,
                     OrchidPageRoute(builder: (_) => const AIHandoffScreen()),
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 20),
+                // Secondary tools — compact, quieter
                 _buildToolCard(
                   context,
                   icon: Icons.location_on,
@@ -82,6 +84,85 @@ class ToolsScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildPrimaryToolCard(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return OrchidCard(
+      onTap: onTap,
+      padding: EdgeInsets.zero,
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            // Accent strip
+            Container(
+              width: 4,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(AppTheme.radiusCard),
+                  bottomLeft: Radius.circular(AppTheme.radiusCard),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 20, 20),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [color.withValues(alpha: 0.18), color.withValues(alpha: 0.06)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                      ),
+                      child: Icon(icon, color: color, size: 28),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle,
+                            style: const TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 13,
+                              height: 1.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right, color: color.withValues(alpha: 0.5)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildToolCard(
     BuildContext context, {
     required IconData icon,
@@ -92,19 +173,19 @@ class ToolsScreen extends StatelessWidget {
   }) {
     return OrchidCard(
       onTap: onTap,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
           Container(
-            width: 56,
-            height: 56,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
             ),
-            child: Icon(icon, color: color, size: 28),
+            child: Icon(icon, color: color, size: 20),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -112,21 +193,21 @@ class ToolsScreen extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 4),
                 Text(
                   subtitle,
                   style: const TextStyle(
                     color: AppTheme.textSecondary,
+                    fontSize: 12,
                   ),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
+          const Icon(Icons.chevron_right, size: 20, color: AppTheme.textSecondary),
         ],
       ),
     );

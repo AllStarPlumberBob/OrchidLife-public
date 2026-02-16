@@ -332,7 +332,7 @@ class _GalleryCard extends StatelessWidget {
             Expanded(
               flex: 2,
               child: Padding(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -342,13 +342,15 @@ class _GalleryCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (orchid.variety != null)
+                    if (orchid.variety != null) ...[
+                      const SizedBox(height: 2),
                       Text(
                         orchid.variety!,
                         style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                    ],
                     const Spacer(),
                     Row(
                       children: [

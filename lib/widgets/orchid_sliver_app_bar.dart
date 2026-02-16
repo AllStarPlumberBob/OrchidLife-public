@@ -53,31 +53,14 @@ class OrchidSliverAppBar extends StatelessWidget {
             ),
           ),
           child: flexibleContent ??
-              SafeArea(
+              Align(
+                alignment: Alignment.bottomRight,
                 child: Padding(
-                  padding: const EdgeInsets.only(left: 20, top: 8),
-                  child: Align(
-                    alignment: Alignment.topLeft,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.local_florist,
-                          color: AppTheme.textOnPrimary.withValues(alpha: 0.5),
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          title,
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w300,
-                            letterSpacing: 0.5,
-                            color: AppTheme.textOnPrimary.withValues(alpha: 0.7),
-                          ),
-                        ),
-                      ],
-                    ),
+                  padding: const EdgeInsets.only(right: 20, bottom: 48),
+                  child: Icon(
+                    Icons.local_florist,
+                    color: AppTheme.textOnPrimary.withValues(alpha: 0.08),
+                    size: 72,
                   ),
                 ),
               ),

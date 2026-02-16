@@ -64,7 +64,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SliverList(
             delegate: SliverChildListDelegate([
               // Notifications section
-              _buildSectionHeader('Notifications', icon: Icons.notifications_outlined),
+              _buildSectionHeader('Notifications', icon: Icons.notifications_outlined, first: true),
               SwitchListTile(
                 title: const Text('Enable Notifications'),
                 subtitle: Text(_isTogglingNotifications
@@ -109,7 +109,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 enabled: _notificationsEnabled,
                 onTap: _notificationsEnabled ? _selectNotifyTime : null,
               ),
-              const Divider(),
 
               // Default intervals section
               _buildSectionHeader('Default Care Intervals', icon: Icons.schedule),
@@ -158,7 +157,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _selectInterval('fertilize'),
               ),
-              const Divider(),
 
               // Data management section
               _buildSectionHeader('Data Management', icon: Icons.storage),
@@ -190,7 +188,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 enabled: false,
               ),
-              const Divider(),
 
               // About section
               _buildSectionHeader('About', icon: Icons.info_outline),
@@ -229,9 +226,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title, {IconData? icon}) {
+  Widget _buildSectionHeader(String title, {IconData? icon, bool first = false}) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: EdgeInsets.fromLTRB(16, first ? 8 : 24, 16, 8),
       child: SectionHeader(
         icon: icon ?? Icons.settings,
         color: AppTheme.primary,

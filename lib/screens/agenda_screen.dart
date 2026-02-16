@@ -578,39 +578,20 @@ class _AgendaScreenState extends State<AgendaScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text(
-                      weekdayLabel,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary,
-                        borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                      ),
-                      child: const Text(
-                        'Today',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.textOnPrimary,
-                        ),
-                      ),
-                    ),
-                  ],
+                const Text(
+                  'Today',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primary,
+                    letterSpacing: -0.3,
+                  ),
                 ),
                 Text(
-                  dayLabel,
+                  '$weekdayLabel, $dayLabel',
                   style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.primary.withValues(alpha: 0.7),
+                    fontSize: 13,
+                    color: AppTheme.primary.withValues(alpha: 0.6),
                   ),
                 ),
               ],
