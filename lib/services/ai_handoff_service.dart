@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:android_intent_plus/android_intent.dart';
@@ -11,22 +12,24 @@ import 'package:android_intent_plus/flag.dart';
 /// successfully, or `false` if all fallbacks failed (also shows an error
 /// snackbar via the provided [BuildContext]).
 class AIHandoffService {
-  /// Try to launch a native Android app by package name using MAIN/LAUNCHER.
-  /// Returns true if the app was found and launched, false otherwise.
+  /// Try to launch a native Android app by package name.
+  /// Skips canResolveActivity() — on Android 11+ it returns false even when
+  /// the app is installed due to package visibility restrictions. Instead we
+  /// just attempt the launch and catch PlatformException on failure.
   static Future<bool> _tryLaunchNativeApp(String packageName) async {
     if (!Platform.isAndroid) return false;
-    final intent = AndroidIntent(
-      action: 'android.intent.action.MAIN',
-      category: 'android.intent.category.LAUNCHER',
-      package: packageName,
-      flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
-    );
-    final canResolve = await intent.canResolveActivity();
-    if (canResolve == true) {
+    try {
+      final intent = AndroidIntent(
+        action: 'android.intent.action.MAIN',
+        category: 'android.intent.category.LAUNCHER',
+        package: packageName,
+        flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
+      );
       await intent.launch();
       return true;
+    } on PlatformException {
+      return false;
     }
-    return false;
   }
 
   /// Open Google Lens for image identification (native app on Android).
@@ -35,7 +38,7 @@ class AIHandoffService {
       // Try Google Lens app directly
       if (await _tryLaunchNativeApp('com.google.ar.lens')) return true;
 
-      // Fallback: Google app's lens deep link
+      // Fallback: Google app's lens deep link (skip canResolveActivity)
       try {
         const intent = AndroidIntent(
           action: 'android.intent.action.VIEW',
@@ -43,12 +46,11 @@ class AIHandoffService {
           package: 'com.google.android.googlequicksearchbox',
           flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
         );
-        final canResolve = await intent.canResolveActivity();
-        if (canResolve == true) {
-          await intent.launch();
-          return true;
-        }
-      } catch (_) {}
+        await intent.launch();
+        return true;
+      } on PlatformException {
+        // App not installed or can't handle the intent
+      }
     }
     // Final fallback: Google Images search
     final url = Uri.parse('https://images.google.com');
