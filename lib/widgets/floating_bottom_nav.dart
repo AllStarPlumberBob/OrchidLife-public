@@ -70,10 +70,17 @@ class FloatingBottomNav extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        AnimatedScale(
-                          scale: selected ? 1.1 : 1.0,
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 1.0, end: selected ? 1.1 : 1.0),
                           duration: const Duration(milliseconds: 200),
                           curve: Curves.easeOut,
+                          builder: (context, scale, child) {
+                            return Transform(
+                              transform: Matrix4.identity()..scaleByDouble(scale, scale, scale, 1.0),
+                              alignment: Alignment.center,
+                              child: child,
+                            );
+                          },
                           child: Icon(
                             selected ? item.selectedIcon : item.icon,
                             size: 24,

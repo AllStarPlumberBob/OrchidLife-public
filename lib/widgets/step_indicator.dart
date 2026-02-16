@@ -18,14 +18,18 @@ class StepIndicator extends StatelessWidget {
     return Row(
       children: List.generate(totalSteps * 2 - 1, (i) {
         if (i.isOdd) {
-          // Connector
+          // Connector line
           final stepIndex = i ~/ 2;
           return Expanded(
             child: Container(
               height: 2,
-              color: stepIndex < currentStep
-                  ? AppTheme.primary
-                  : AppTheme.divider,
+              margin: EdgeInsets.only(bottom: stepLabels != null ? 18 : 0),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(1),
+                color: stepIndex < currentStep
+                    ? AppTheme.primary.withValues(alpha: 0.4)
+                    : AppTheme.divider.withValues(alpha: 0.5),
+              ),
             ),
           );
         }
@@ -37,16 +41,26 @@ class StepIndicator extends StatelessWidget {
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: isActive ? 32 : 24,
-              height: isActive ? 32 : 24,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOut,
+              width: 28,
+              height: 28,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: isActive
                     ? AppTheme.primary
                     : isCompleted
-                        ? AppTheme.primary.withValues(alpha: 0.3)
-                        : AppTheme.divider,
+                        ? AppTheme.primary.withValues(alpha: 0.15)
+                        : AppTheme.surfaceVariant,
+                border: isActive
+                    ? null
+                    : Border.all(
+                        color: isCompleted
+                            ? AppTheme.primary.withValues(alpha: 0.3)
+                            : AppTheme.divider,
+                        width: 1,
+                      ),
               ),
               child: Center(
                 child: isCompleted
@@ -54,8 +68,8 @@ class StepIndicator extends StatelessWidget {
                     : Text(
                         '${stepIndex + 1}',
                         style: TextStyle(
-                          fontSize: isActive ? 14 : 11,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
                           color: isActive ? Colors.white : AppTheme.textSecondary,
                         ),
                       ),
@@ -66,8 +80,12 @@ class StepIndicator extends StatelessWidget {
               Text(
                 stepLabels![stepIndex],
                 style: TextStyle(
-                  fontSize: 9,
-                  color: isActive ? AppTheme.primary : AppTheme.textSecondary,
+                  fontSize: 10,
+                  color: isActive
+                      ? AppTheme.primary
+                      : isCompleted
+                          ? AppTheme.textPrimary
+                          : AppTheme.textSecondary,
                   fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
                 ),
               ),

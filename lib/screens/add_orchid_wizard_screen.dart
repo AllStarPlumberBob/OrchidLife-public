@@ -12,6 +12,7 @@ import '../services/ai_handoff_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/step_indicator.dart';
 import '../widgets/orchid_card.dart';
+import '../widgets/section_header.dart';
 
 class AddOrchidWizardScreen extends StatefulWidget {
   const AddOrchidWizardScreen({super.key});
@@ -97,13 +98,15 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppTheme.textOnPrimary),
+          icon: const Icon(Icons.arrow_back),
           onPressed: _back,
         ),
-        title: const Text('Add Orchid', style: TextStyle(color: AppTheme.textOnPrimary)),
+        title: const Text('Add Orchid'),
         backgroundColor: AppTheme.sliverGradientStart,
+        foregroundColor: AppTheme.textOnPrimary,
         elevation: 0,
         flexibleSpace: Container(
           decoration: const BoxDecoration(
@@ -117,9 +120,10 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
       ),
       body: Column(
         children: [
-          // Step indicator
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          // Step indicator on cream background
+          Container(
+            color: AppTheme.background,
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
             child: StepIndicator(
               currentStep: _currentStep,
               totalSteps: _totalSteps,
@@ -152,34 +156,52 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
   Widget _buildBottomNav() {
     return Container(
       padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + MediaQuery.of(context).padding.bottom),
-      decoration: const BoxDecoration(
-        color: AppTheme.background,
-        border: Border(top: BorderSide(color: AppTheme.divider)),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        border: Border(top: BorderSide(color: AppTheme.divider.withValues(alpha: 0.5))),
       ),
       child: Row(
         children: [
           if (_currentStep > 0)
             OutlinedButton(
               onPressed: _back,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.textSecondary,
+                side: BorderSide(color: AppTheme.divider.withValues(alpha: 0.7)),
+              ),
               child: const Text('Back'),
             ),
           const Spacer(),
-          if (_currentStep == 3) // Health check step - show skip
+          if (_currentStep == 3) ...[
             TextButton(
               onPressed: _next,
-              child: const Text('Skip'),
+              child: Text(
+                'Skip',
+                style: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.8)),
+              ),
             ),
-          const SizedBox(width: 8),
+            const SizedBox(width: 8),
+          ],
           if (_currentStep < _totalSteps - 1)
             FilledButton(
               onPressed: _canProceed() ? _next : null,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: AppTheme.textOnPrimary,
+                disabledBackgroundColor: AppTheme.divider,
+              ),
               child: const Text('Next'),
             )
           else
             FilledButton.icon(
               onPressed: _canProceed() ? _saveOrchid : null,
-              icon: const Icon(Icons.check),
+              icon: const Icon(Icons.check, size: 18),
               label: const Text('Add to Collection'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: AppTheme.textOnPrimary,
+                disabledBackgroundColor: AppTheme.divider,
+              ),
             ),
         ],
       ),
@@ -188,20 +210,13 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
 
   bool _canProceed() {
     switch (_currentStep) {
-      case 0: // Photo — optional
-        return true;
-      case 1: // Identify — optional
-        return true;
-      case 2: // Details — name required
-        return _nameController.text.trim().isNotEmpty;
-      case 3: // Health check — always can proceed
-        return true;
-      case 4: // Care setup — always can proceed
-        return true;
-      case 5: // Review — name required
-        return _nameController.text.trim().isNotEmpty;
-      default:
-        return true;
+      case 0: return true;
+      case 1: return true;
+      case 2: return _nameController.text.trim().isNotEmpty;
+      case 3: return true;
+      case 4: return true;
+      case 5: return _nameController.text.trim().isNotEmpty;
+      default: return true;
     }
   }
 
@@ -209,35 +224,32 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
 
   Widget _buildPhotoStep() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          const Text(
-            'Start with a photo',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          const SectionHeader(
+            icon: Icons.camera_alt,
+            color: AppTheme.primary,
+            title: 'Start with a photo',
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           const Text(
-            'Take a photo of your orchid or choose one from your gallery.',
-            style: TextStyle(color: AppTheme.textSecondary),
-            textAlign: TextAlign.center,
+            'Take a photo or choose from your gallery.',
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 20),
           Expanded(
             child: GestureDetector(
               onTap: _pickPhoto,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceVariant,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-                  border: Border.all(color: AppTheme.cardBorder, width: 2),
-                ),
+              child: OrchidCard(
+                margin: EdgeInsets.zero,
+                padding: EdgeInsets.zero,
                 child: _photoPath != null
                     ? Stack(
                         fit: StackFit.expand,
                         children: [
                           ClipRRect(
-                            borderRadius: BorderRadius.circular(AppTheme.radiusLarge - 1),
+                            borderRadius: BorderRadius.circular(AppTheme.radiusCard - 1),
                             child: Image.file(
                               File(_photoPath!),
                               fit: BoxFit.cover,
@@ -249,8 +261,11 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
                             right: 8,
                             child: IconButton.filled(
                               onPressed: () => setState(() => _photoPath = null),
-                              icon: const Icon(Icons.close),
-                              style: IconButton.styleFrom(backgroundColor: Colors.black54),
+                              icon: const Icon(Icons.close, size: 18),
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.black45,
+                                foregroundColor: Colors.white,
+                              ),
                             ),
                           ),
                         ],
@@ -268,11 +283,19 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.add_a_photo, size: 64, color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+        Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            color: AppTheme.primary.withValues(alpha: 0.08),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(Icons.add_a_photo, size: 32, color: AppTheme.primary.withValues(alpha: 0.4)),
+        ),
         const SizedBox(height: 16),
-        const Text('Tap to add a photo', style: TextStyle(color: AppTheme.textSecondary)),
-        const SizedBox(height: 8),
-        const Text('(Optional)', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+        const Text('Tap to add a photo', style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+        const SizedBox(height: 4),
+        Text('Optional', style: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.6), fontSize: 12)),
       ],
     );
   }
@@ -322,61 +345,58 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
 
   Widget _buildIdentifyStep() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Identify your orchid',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          const SectionHeader(
+            icon: Icons.search,
+            color: AppTheme.primary,
+            title: 'Identify your orchid',
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           const Text(
-            'Use AI to identify your orchid species, or select from the database.',
-            style: TextStyle(color: AppTheme.textSecondary),
+            'Use AI to identify or select from the database.',
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           // AI identification buttons
           if (_photoPath != null) ...[
-            const Text('Identify with AI:', style: TextStyle(fontWeight: FontWeight.w600)),
+            Text('Identify with AI', style: TextStyle(
+              fontSize: 13, fontWeight: FontWeight.w600,
+              color: AppTheme.textSecondary.withValues(alpha: 0.8),
+              letterSpacing: 0.3,
+            )),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    final opened = await AIHandoffService.openGoogleLens(context);
-                    if (!mounted || !opened) return;
-                    AIHandoffService.showFollowUp(context, 'Google Lens', message: 'Opening Google Lens... Upload your orchid photo to identify the species.');
-                  },
-                  icon: const Icon(Icons.search, color: AppTheme.statusUpcoming),
-                  label: const Text('Google Lens'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    final opened = await AIHandoffService.openClaude(context);
-                    if (!mounted || !opened) return;
-                    AIHandoffService.showFollowUp(context, 'Claude', message: 'Opening Claude... Upload your orchid photo and ask "What orchid species is this?"');
-                  },
-                  icon: const Icon(Icons.psychology, color: AppTheme.fertilizerOrange),
-                  label: const Text('Claude'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    final opened = await AIHandoffService.openPerplexity(context);
-                    if (!mounted || !opened) return;
-                    AIHandoffService.showFollowUp(context, 'Perplexity', message: 'Opening Perplexity... Upload your orchid photo and ask "What orchid species is this?"');
-                  },
-                  icon: const Icon(Icons.travel_explore, color: Color(0xFF20808D)),
-                  label: const Text('Perplexity'),
-                ),
+                _aiChipButton('Google', Icons.search, AppTheme.statusUpcoming, () async {
+                  final opened = await AIHandoffService.openGoogleLens(context);
+                  if (!mounted || !opened) return;
+                  AIHandoffService.showFollowUp(context, 'Google Lens', message: 'Opening Google Lens... Upload your orchid photo to identify the species.');
+                }),
+                _aiChipButton('Claude', Icons.psychology, AppTheme.fertilizerOrange, () async {
+                  final opened = await AIHandoffService.openClaude(context);
+                  if (!mounted || !opened) return;
+                  AIHandoffService.showFollowUp(context, 'Claude', message: 'Opening Claude... Upload your orchid photo and ask "What orchid species is this?"');
+                }),
+                _aiChipButton('Perplexity', Icons.travel_explore, AppTheme.brandPerplexity, () async {
+                  final opened = await AIHandoffService.openPerplexity(context);
+                  if (!mounted || !opened) return;
+                  AIHandoffService.showFollowUp(context, 'Perplexity', message: 'Opening Perplexity... Upload your orchid photo and ask "What orchid species is this?"');
+                }),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
           ],
           // Species database picker
-          const Text('Or select from database:', style: TextStyle(fontWeight: FontWeight.w600)),
+          Text('Select from database', style: TextStyle(
+            fontSize: 13, fontWeight: FontWeight.w600,
+            color: AppTheme.textSecondary.withValues(alpha: 0.8),
+            letterSpacing: 0.3,
+          )),
           const SizedBox(height: 8),
           Expanded(
             child: ListView.builder(
@@ -384,10 +404,11 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
               itemBuilder: (context, index) {
                 final sp = _speciesProfiles[index];
                 final isSelected = _speciesProfileId == sp.id;
-                return Card(
-                  color: isSelected ? AppTheme.primary.withValues(alpha: 0.1) : null,
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: OrchidCard(
+                    margin: EdgeInsets.zero,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     onTap: () {
                       setState(() {
                         _speciesProfileId = isSelected ? null : sp.id;
@@ -397,56 +418,60 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
                         }
                       });
                     },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      child: Row(
-                        children: [
-                          // Orchid type thumbnail
-                          Container(
-                            width: 56,
-                            height: 56,
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppTheme.primary.withValues(alpha: 0.12)
-                                  : AppTheme.surfaceVariant,
-                              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppTheme.primary.withValues(alpha: 0.1)
+                                : AppTheme.surfaceVariant,
+                            borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Image.asset(
+                            'assets/orchid_types/${sp.genus.toLowerCase().trim()}.webp',
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Icon(
+                              Icons.local_florist,
+                              color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+                              size: 24,
                             ),
-                            clipBehavior: Clip.antiAlias,
-                            child: Image.asset(
-                              'assets/orchid_types/${sp.genus.toLowerCase().trim()}.webp',
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Icon(
-                                Icons.local_florist,
-                                color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
-                                size: 28,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                sp.commonName,
+                                style: TextStyle(
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                  fontSize: 15,
+                                  color: isSelected ? AppTheme.primary : AppTheme.textPrimary,
+                                ),
                               ),
-                            ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${sp.genus}${sp.difficultyLevel != null ? ' \u00b7 ${sp.difficultyLevel}' : ''}',
+                                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  sp.commonName,
-                                  style: TextStyle(
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                    fontSize: 15,
-                                    color: isSelected ? AppTheme.primary : null,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '${sp.genus}${sp.difficultyLevel != null ? ' \u00b7 ${sp.difficultyLevel}' : ''}',
-                                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-                                ),
-                              ],
+                        ),
+                        if (isSelected)
+                          Container(
+                            width: 24,
+                            height: 24,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppTheme.primary,
                             ),
+                            child: const Icon(Icons.check, size: 14, color: Colors.white),
                           ),
-                          if (isSelected)
-                            const Icon(Icons.check_circle, color: AppTheme.primary),
-                        ],
-                      ),
+                      ],
                     ),
                   ),
                 );
@@ -458,8 +483,20 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
     );
   }
 
+  Widget _aiChipButton(String label, IconData icon, Color color, VoidCallback onTap) {
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, color: color, size: 18),
+      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppTheme.textPrimary,
+        side: BorderSide(color: AppTheme.divider.withValues(alpha: 0.7)),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
+    );
+  }
+
   void _prefillCareFromSpecies(SpeciesProfile sp) {
-    // Adjust watering interval based on difficulty
     final waterInterval = sp.difficultyLevel == 'Easy' ? 7 : 5;
     _pendingCareTasks = [
       {'careType': CareType.water, 'intervalDays': waterInterval, 'customLabel': null},
@@ -473,15 +510,16 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
 
   Widget _buildDetailsStep() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Name & details',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          const SectionHeader(
+            icon: Icons.edit,
+            color: AppTheme.primary,
+            title: 'Name & details',
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           TextFormField(
             controller: _nameController,
             decoration: const InputDecoration(
@@ -493,7 +531,7 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
             textCapitalization: TextCapitalization.words,
             onChanged: (_) => setState(() {}),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           TextFormField(
             controller: _varietyController,
             decoration: const InputDecoration(
@@ -503,7 +541,7 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
             ),
             textCapitalization: TextCapitalization.words,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           TextFormField(
             controller: _locationController,
             decoration: const InputDecoration(
@@ -514,33 +552,41 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
             textCapitalization: TextCapitalization.sentences,
           ),
           const SizedBox(height: 16),
-          ListTile(
-            leading: const Icon(Icons.calendar_today),
-            title: const Text('Date Acquired'),
-            subtitle: Text(_dateAcquired != null
-                ? '${_dateAcquired!.month}/${_dateAcquired!.day}/${_dateAcquired!.year}'
-                : 'Not set'),
-            trailing: _dateAcquired != null
-                ? IconButton(icon: const Icon(Icons.clear), onPressed: () => setState(() => _dateAcquired = null))
-                : null,
-            onTap: () async {
-              final picked = await showDatePicker(
-                context: context,
-                initialDate: _dateAcquired ?? DateTime.now(),
-                firstDate: DateTime(2000),
-                lastDate: DateTime.now(),
-              );
-              if (picked != null) setState(() => _dateAcquired = picked);
-            },
-          ),
-          const SizedBox(height: 8),
-          SwitchListTile(
-            secondary: Icon(Icons.healing, color: _isRescue ? AppTheme.statusOverdue : AppTheme.textSecondary),
-            title: const Text('Rescue Orchid'),
-            subtitle: const Text('This orchid needs extra TLC'),
-            value: _isRescue,
-            onChanged: (value) => setState(() => _isRescue = value),
-            activeTrackColor: AppTheme.statusOverdue,
+          OrchidCard(
+            margin: EdgeInsets.zero,
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.calendar_today, color: AppTheme.textSecondary),
+                  title: const Text('Date Acquired'),
+                  subtitle: Text(_dateAcquired != null
+                      ? '${_dateAcquired!.month}/${_dateAcquired!.day}/${_dateAcquired!.year}'
+                      : 'Not set'),
+                  trailing: _dateAcquired != null
+                      ? IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: () => setState(() => _dateAcquired = null))
+                      : const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _dateAcquired ?? DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime.now(),
+                    );
+                    if (picked != null) setState(() => _dateAcquired = picked);
+                  },
+                ),
+                Divider(height: 1, color: AppTheme.divider.withValues(alpha: 0.4)),
+                SwitchListTile(
+                  secondary: Icon(Icons.healing, color: _isRescue ? AppTheme.statusOverdue : AppTheme.textSecondary),
+                  title: const Text('Rescue Orchid'),
+                  subtitle: const Text('This orchid needs extra TLC'),
+                  value: _isRescue,
+                  onChanged: (value) => setState(() => _isRescue = value),
+                  activeTrackColor: AppTheme.statusOverdue,
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -562,86 +608,87 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
   // ── Step 4: Health Check (optional) ──
 
   Widget _buildHealthCheckStep() {
-    return Padding(
-      padding: const EdgeInsets.all(24),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          const Text(
-            'Health check-up',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          const SectionHeader(
+            icon: Icons.health_and_safety,
+            color: AppTheme.primary,
+            title: 'Health check-up',
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Want an AI health assessment? This step is optional.',
-            style: TextStyle(color: AppTheme.textSecondary),
-            textAlign: TextAlign.center,
+          const SizedBox(height: 4),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Want an AI health assessment? This step is optional.',
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+            ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
           if (_photoPath != null) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
               child: Image.file(
                 File(_photoPath!),
-                height: 200,
+                height: 180,
+                width: double.infinity,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => const SizedBox.shrink(),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
           ],
           OrchidCard(
+            margin: EdgeInsets.zero,
             child: Column(
               children: [
-                const Icon(Icons.health_and_safety, size: 48, color: AppTheme.primary),
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.health_and_safety, size: 28, color: AppTheme.primary.withValues(alpha: 0.6)),
+                ),
                 const SizedBox(height: 12),
                 const Text(
                   'Get an AI health assessment',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
                 const Text(
-                  'Upload your orchid photo to an AI service for a health check.',
+                  'Upload your orchid photo to an AI service.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppTheme.textSecondary),
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 16),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        final opened = await AIHandoffService.openGoogleLens(context);
-                        if (!mounted || !opened) return;
-                        AIHandoffService.showFollowUp(context, 'Google Lens',
-                            message: 'Opening Google Lens... Upload your orchid photo for a health check.');
-                        setState(() => _healthCheckDone = true);
-                      },
-                      icon: const Icon(Icons.search, color: AppTheme.statusUpcoming),
-                      label: const Text('Google'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        final opened = await AIHandoffService.openClaude(context);
-                        if (!mounted || !opened) return;
-                        AIHandoffService.showFollowUp(context, 'Claude',
-                            message: 'Opening Claude... Upload your photo and ask "Is my orchid healthy?"');
-                        setState(() => _healthCheckDone = true);
-                      },
-                      icon: const Icon(Icons.psychology, color: AppTheme.fertilizerOrange),
-                      label: const Text('Claude'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        final opened = await AIHandoffService.openPerplexity(context);
-                        if (!mounted || !opened) return;
-                        AIHandoffService.showFollowUp(context, 'Perplexity',
-                            message: 'Opening Perplexity... Upload your photo for a health assessment.');
-                        setState(() => _healthCheckDone = true);
-                      },
-                      icon: const Icon(Icons.travel_explore, color: Color(0xFF20808D)),
-                      label: const Text('Perplexity'),
-                    ),
+                    _aiChipButton('Google', Icons.search, AppTheme.statusUpcoming, () async {
+                      final opened = await AIHandoffService.openGoogleLens(context);
+                      if (!mounted || !opened) return;
+                      AIHandoffService.showFollowUp(context, 'Google Lens',
+                          message: 'Opening Google Lens... Upload your orchid photo for a health check.');
+                      setState(() => _healthCheckDone = true);
+                    }),
+                    _aiChipButton('Claude', Icons.psychology, AppTheme.fertilizerOrange, () async {
+                      final opened = await AIHandoffService.openClaude(context);
+                      if (!mounted || !opened) return;
+                      AIHandoffService.showFollowUp(context, 'Claude',
+                          message: 'Opening Claude... Upload your photo and ask "Is my orchid healthy?"');
+                      setState(() => _healthCheckDone = true);
+                    }),
+                    _aiChipButton('Perplexity', Icons.travel_explore, AppTheme.brandPerplexity, () async {
+                      final opened = await AIHandoffService.openPerplexity(context);
+                      if (!mounted || !opened) return;
+                      AIHandoffService.showFollowUp(context, 'Perplexity',
+                          message: 'Opening Perplexity... Upload your photo for a health assessment.');
+                      setState(() => _healthCheckDone = true);
+                    }),
                   ],
                 ),
                 if (_healthCheckDone)
@@ -654,7 +701,10 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
                         const SizedBox(width: 4),
                         Text(
                           'Health check opened',
-                          style: TextStyle(color: AppTheme.statusCompleted.withValues(alpha: 0.8)),
+                          style: TextStyle(
+                            color: AppTheme.statusCompleted.withValues(alpha: 0.8),
+                            fontSize: 13,
+                          ),
                         ),
                       ],
                     ),
@@ -671,125 +721,167 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
 
   Widget _buildCareSetupStep() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Care schedule',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          const SectionHeader(
+            icon: Icons.calendar_month,
+            color: AppTheme.primary,
+            title: 'Care schedule',
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
             _speciesProfileId != null
-                ? 'Pre-filled based on species profile. Adjust as needed.'
+                ? 'Pre-filled based on species. Adjust as needed.'
                 : 'Set up care tasks for your orchid.',
-            style: const TextStyle(color: AppTheme.textSecondary),
+            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
           ),
-          const SizedBox(height: 24),
-          // Soak duration
-          ListTile(
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppTheme.waterBlue.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+          const SizedBox(height: 20),
+          // Soak duration inside a card
+          OrchidCard(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppTheme.waterBlue.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                ),
+                child: const Icon(Icons.timer, color: AppTheme.waterBlue, size: 20),
               ),
-              child: const Icon(Icons.timer, color: AppTheme.waterBlue),
-            ),
-            title: const Text('Soak Duration'),
-            subtitle: Text('$_soakDuration minutes'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () async {
-              final controller = TextEditingController(text: '$_soakDuration');
-              final result = await showDialog<int>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Soak Duration'),
-                  content: Row(
-                    children: [
-                      SizedBox(
-                        width: 60,
-                        child: TextField(
-                          controller: controller,
-                          keyboardType: TextInputType.number,
-                          textAlign: TextAlign.center,
-                          autofocus: true,
+              title: const Text('Soak Duration'),
+              subtitle: Text('$_soakDuration minutes'),
+              trailing: const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
+              onTap: () async {
+                final controller = TextEditingController(text: '$_soakDuration');
+                final result = await showDialog<int>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Soak Duration'),
+                    content: Row(
+                      children: [
+                        SizedBox(
+                          width: 60,
+                          child: TextField(
+                            controller: controller,
+                            keyboardType: TextInputType.number,
+                            textAlign: TextAlign.center,
+                            autofocus: true,
+                          ),
                         ),
+                        const Text(' minutes'),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                      FilledButton(
+                        onPressed: () {
+                          final v = int.tryParse(controller.text);
+                          if (v != null && v >= 5 && v <= 60) Navigator.pop(context, v);
+                        },
+                        child: const Text('Save'),
                       ),
-                      const Text(' minutes'),
                     ],
                   ),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-                    FilledButton(
-                      onPressed: () {
-                        final v = int.tryParse(controller.text);
-                        if (v != null && v >= 5 && v <= 60) Navigator.pop(context, v);
-                      },
-                      child: const Text('Save'),
-                    ),
-                  ],
-                ),
-              );
-              if (result != null) setState(() => _soakDuration = result);
-            },
+                );
+                if (result != null) setState(() => _soakDuration = result);
+              },
+            ),
           ),
-          const Divider(),
-          // Care tasks
+          // Care tasks header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Care Tasks', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              Text('Care Tasks', style: TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w600,
+                color: AppTheme.textSecondary.withValues(alpha: 0.8),
+                letterSpacing: 0.3,
+              )),
               TextButton.icon(
                 onPressed: _addCareTask,
-                icon: const Icon(Icons.add, size: 18),
+                icon: const Icon(Icons.add, size: 16),
                 label: const Text('Add'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppTheme.primary,
+                  visualDensity: VisualDensity.compact,
+                ),
               ),
             ],
           ),
+          const SizedBox(height: 4),
           if (_pendingCareTasks.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Text('No care tasks', style: TextStyle(color: AppTheme.textSecondary)),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Center(
+                child: Text('No care tasks yet', style: TextStyle(
+                  color: AppTheme.textSecondary.withValues(alpha: 0.6), fontSize: 13,
+                )),
+              ),
             )
           else
-            ..._pendingCareTasks.asMap().entries.map((entry) {
-              final index = entry.key;
-              final task = entry.value;
-              final careType = task['careType'] as CareType;
-              final intervalDays = task['intervalDays'] as int;
-              final customLabel = task['customLabel'] as String?;
-              final displayName = customLabel ?? AppTheme.getCareTypeDisplayName(careType.name);
-              final color = AppTheme.getCareTypeColor(careType.name);
-              final icon = AppTheme.getCareTypeIcon(careType.name);
+            OrchidCard(
+              margin: EdgeInsets.zero,
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: _pendingCareTasks.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final task = entry.value;
+                  final careType = task['careType'] as CareType;
+                  final intervalDays = task['intervalDays'] as int;
+                  final customLabel = task['customLabel'] as String?;
+                  final displayName = customLabel ?? AppTheme.getCareTypeDisplayName(careType.name);
+                  final color = AppTheme.getCareTypeColor(careType.name);
+                  final icon = AppTheme.getCareTypeIcon(careType.name);
 
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  width: 36, height: 36,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                  ),
-                  child: Icon(icon, color: color, size: 20),
-                ),
-                title: Text(displayName),
-                subtitle: Text('Every $intervalDays days'),
-                trailing: IconButton(
-                  icon: const Icon(Icons.close, size: 20),
-                  onPressed: () => setState(() => _pendingCareTasks.removeAt(index)),
-                ),
-              );
-            }),
+                  return Column(
+                    children: [
+                      if (index > 0)
+                        Divider(height: 1, indent: 56, color: AppTheme.divider.withValues(alpha: 0.4)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: color.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                              ),
+                              child: Icon(icon, color: color, size: 18),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(displayName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                                  Text('Every $intervalDays days', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.close, size: 18, color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+                              onPressed: () => setState(() => _pendingCareTasks.removeAt(index)),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
         ],
       ),
     );
   }
 
   Future<void> _addCareTask() async {
-    // Simple add care task dialog
     CareType? selectedType;
     final intervalController = TextEditingController(text: '7');
 
@@ -868,33 +960,36 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
         : null;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Review & save',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          const SectionHeader(
+            icon: Icons.check_circle_outline,
+            color: AppTheme.primary,
+            title: 'Review & save',
           ),
-          const SizedBox(height: 24),
-          // Photo + name card
+          const SizedBox(height: 20),
+          // Hero card: photo + name
           OrchidCard(
+            margin: const EdgeInsets.only(bottom: 12),
             child: Row(
               children: [
                 Container(
-                  width: 80,
-                  height: 80,
+                  width: 72,
+                  height: 72,
                   decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.1),
+                    color: AppTheme.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                   ),
                   child: _photoPath != null
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                           child: Image.file(File(_photoPath!), fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(Icons.local_florist, color: AppTheme.primary, size: 40)),
+                            width: 72, height: 72,
+                            errorBuilder: (_, __, ___) => const Icon(Icons.local_florist, color: AppTheme.primary, size: 32)),
                         )
-                      : const Icon(Icons.local_florist, color: AppTheme.primary, size: 40),
+                      : const Icon(Icons.local_florist, color: AppTheme.primary, size: 32),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -903,55 +998,113 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
                     children: [
                       Text(
                         _nameController.text.isEmpty ? 'Unnamed' : _nameController.text,
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
-                      if (_varietyController.text.isNotEmpty)
-                        Text(_varietyController.text, style: const TextStyle(color: AppTheme.textSecondary)),
-                      if (speciesName != null)
-                        Text('Species: $speciesName', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-                      if (_isRescue)
-                        const Text('Rescue orchid', style: TextStyle(fontSize: 12, color: AppTheme.statusOverdue)),
+                      if (_varietyController.text.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(_varietyController.text, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+                      ],
+                      if (speciesName != null) ...[
+                        const SizedBox(height: 2),
+                        Text(speciesName, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                      ],
+                      if (_isRescue) ...[
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppTheme.statusOverdue.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.healing, size: 12, color: AppTheme.statusOverdue),
+                              SizedBox(width: 4),
+                              Text('Rescue', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.statusOverdue)),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          if (_locationController.text.isNotEmpty)
-            _reviewItem(Icons.location_on, 'Location', _locationController.text),
-          if (_dateAcquired != null)
-            _reviewItem(Icons.calendar_today, 'Acquired', '${_dateAcquired!.month}/${_dateAcquired!.day}/${_dateAcquired!.year}'),
-          _reviewItem(Icons.timer, 'Soak Duration', '$_soakDuration minutes'),
-          const SizedBox(height: 12),
-          const Text('Care Schedule:', style: TextStyle(fontWeight: FontWeight.w600)),
-          if (_pendingCareTasks.isEmpty)
-            const Text('No care tasks', style: TextStyle(color: AppTheme.textSecondary))
-          else
-            ..._pendingCareTasks.map((task) {
-              final careType = task['careType'] as CareType;
-              return ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(AppTheme.getCareTypeIcon(careType.name), color: AppTheme.getCareTypeColor(careType.name)),
-                title: Text(AppTheme.getCareTypeDisplayName(careType.name)),
-                trailing: Text('Every ${task['intervalDays']} days'),
-              );
-            }),
+          // Details card
+          if (_locationController.text.isNotEmpty || _dateAcquired != null)
+            OrchidCard(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: [
+                  if (_locationController.text.isNotEmpty)
+                    _reviewRow(Icons.location_on, 'Location', _locationController.text),
+                  if (_locationController.text.isNotEmpty && _dateAcquired != null)
+                    Divider(height: 1, color: AppTheme.divider.withValues(alpha: 0.4)),
+                  if (_dateAcquired != null)
+                    _reviewRow(Icons.calendar_today, 'Acquired', '${_dateAcquired!.month}/${_dateAcquired!.day}/${_dateAcquired!.year}'),
+                ],
+              ),
+            ),
+          // Care schedule card
+          OrchidCard(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                // Soak duration row
+                _reviewRow(Icons.timer, 'Soak', '$_soakDuration min'),
+                if (_pendingCareTasks.isNotEmpty)
+                  Divider(height: 1, color: AppTheme.divider.withValues(alpha: 0.4)),
+                ..._pendingCareTasks.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final task = entry.value;
+                  final careType = task['careType'] as CareType;
+                  final color = AppTheme.getCareTypeColor(careType.name);
+                  final icon = AppTheme.getCareTypeIcon(careType.name);
+                  final displayName = AppTheme.getCareTypeDisplayName(careType.name);
+
+                  return Column(
+                    children: [
+                      if (index > 0)
+                        Divider(height: 1, indent: 56, color: AppTheme.divider.withValues(alpha: 0.4)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        child: Row(
+                          children: [
+                            Icon(icon, color: color, size: 20),
+                            const SizedBox(width: 12),
+                            Expanded(child: Text(displayName, style: const TextStyle(fontSize: 14))),
+                            Text(
+                              'Every ${task['intervalDays']} days',
+                              style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                }),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _reviewItem(IconData icon, String label, String value) {
+  Widget _reviewRow(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: AppTheme.textSecondary),
-          const SizedBox(width: 8),
-          Text('$label: ', style: const TextStyle(color: AppTheme.textSecondary)),
-          Text(value),
+          Icon(icon, size: 18, color: AppTheme.textSecondary),
+          const SizedBox(width: 12),
+          Text(label, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+          const Spacer(),
+          Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         ],
       ),
     );
@@ -994,7 +1147,7 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${_nameController.text.trim()} added!'),
+          content: Text('${_nameController.text.trim()} added to your collection'),
           backgroundColor: AppTheme.primary,
         ),
       );
