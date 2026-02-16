@@ -127,7 +127,7 @@ class AppTheme {
   // ══════════════════════════════════════════════════════════════════════════
 
   static const double sliverExpandedHeight = 140.0;
-  static const double floatingNavHeight = 56.0;
+  static const double floatingNavHeight = 64.0;
   static const double floatingNavMarginH = 16.0;
   static const double floatingNavMarginB = 12.0;
   static const double floatingNavRadius = 24.0;

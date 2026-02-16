@@ -56,51 +56,41 @@ class FloatingBottomNav extends StatelessWidget {
                 onTap: () => onTap(i),
                 splashColor: Colors.white.withValues(alpha: 0.15),
                 highlightColor: Colors.white.withValues(alpha: 0.1),
-                child: Center(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeInOut,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? Colors.white.withValues(alpha: 0.2)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 1.0, end: selected ? 1.1 : 1.0),
-                          duration: const Duration(milliseconds: 200),
-                          curve: Curves.easeOut,
-                          builder: (context, scale, child) {
-                            return Transform(
-                              transform: Matrix4.identity()..scaleByDouble(scale, scale, scale, 1.0),
-                              alignment: Alignment.center,
-                              child: child,
-                            );
-                          },
-                          child: Icon(
+                child: SizedBox.expand(
+                  child: Center(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeInOut,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? Colors.white.withValues(alpha: 0.2)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
                             selected ? item.selectedIcon : item.icon,
-                            size: 24,
+                            size: 22,
                             color: selected
                                 ? Colors.white
                                 : Colors.white.withValues(alpha: 0.7),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          item.label,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                            color: selected
-                                ? Colors.white
-                                : Colors.white.withValues(alpha: 0.7),
+                          const SizedBox(height: 2),
+                          Text(
+                            item.label,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                              color: selected
+                                  ? Colors.white
+                                  : Colors.white.withValues(alpha: 0.7),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
