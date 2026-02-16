@@ -15,6 +15,9 @@ class StepIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final dividerColor = Theme.of(context).dividerColor;
+
     return Row(
       children: List.generate(totalSteps * 2 - 1, (i) {
         if (i.isOdd) {
@@ -28,7 +31,7 @@ class StepIndicator extends StatelessWidget {
                 borderRadius: BorderRadius.circular(1),
                 color: stepIndex < currentStep
                     ? AppTheme.primary.withValues(alpha: 0.4)
-                    : AppTheme.divider.withValues(alpha: 0.5),
+                    : dividerColor.withValues(alpha: 0.5),
               ),
             ),
           );
@@ -52,13 +55,13 @@ class StepIndicator extends StatelessWidget {
                     ? AppTheme.primary
                     : isCompleted
                         ? AppTheme.primary.withValues(alpha: 0.15)
-                        : AppTheme.surfaceVariant,
+                        : colorScheme.surfaceContainerHighest,
                 border: isActive
                     ? null
                     : Border.all(
                         color: isCompleted
                             ? AppTheme.primary.withValues(alpha: 0.3)
-                            : AppTheme.divider,
+                            : dividerColor,
                         width: 1,
                       ),
               ),
@@ -70,7 +73,7 @@ class StepIndicator extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-                          color: isActive ? Colors.white : AppTheme.textPrimary.withValues(alpha: 0.5),
+                          color: isActive ? Colors.white : colorScheme.onSurface.withValues(alpha: 0.5),
                         ),
                       ),
               ),
@@ -84,8 +87,8 @@ class StepIndicator extends StatelessWidget {
                   color: isActive
                       ? AppTheme.primary
                       : isCompleted
-                          ? AppTheme.textPrimary
-                          : AppTheme.textPrimary.withValues(alpha: 0.5),
+                          ? colorScheme.onSurface
+                          : colorScheme.onSurface.withValues(alpha: 0.5),
                   fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
                 ),
               ),
