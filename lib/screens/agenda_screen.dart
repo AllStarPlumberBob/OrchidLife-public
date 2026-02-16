@@ -1,13 +1,32 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../database/database.dart';
 import '../theme/app_theme.dart';
 import '../widgets/orchid_sliver_app_bar.dart';
+import '../widgets/orchid_card.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/page_transitions.dart';
 import '../widgets/soak_session_widgets.dart';
 import 'orchid_detail_screen.dart';
+
+// ── Combined agenda data to reduce StreamBuilder nesting ──
+class _AgendaData {
+  final List<SoakSession> activeSessions;
+  final Map<int, Orchid> orchidMap;
+  final List<CareTask> todayTasks;
+  final List<CareLog> recentLogs;
+  final List<CareTask> upcomingTasks;
+
+  const _AgendaData({
+    required this.activeSessions,
+    required this.orchidMap,
+    required this.todayTasks,
+    required this.recentLogs,
+    required this.upcomingTasks,
+  });
+}
 
 class AgendaScreen extends StatefulWidget {
   const AgendaScreen({super.key});
@@ -21,10 +40,15 @@ class _AgendaScreenState extends State<AgendaScreen> {
   final GlobalKey _todayKey = GlobalKey();
   bool _hasScrolledToToday = false;
 
+  // Combined stream
+  Stream<_AgendaData>? _agendaStream;
+  AppDatabase? _lastDb;
+
   void _refresh() {
     setState(() {
       _refreshKey = UniqueKey();
       _hasScrolledToToday = false;
+      _agendaStream = null; // Force stream rebuild
     });
   }
 
@@ -43,79 +67,88 @@ class _AgendaScreenState extends State<AgendaScreen> {
     });
   }
 
+  Stream<_AgendaData> _buildCombinedStream(AppDatabase db) {
+    // Combine all five streams into one using StreamZip-style manual composition
+    return db.watchActiveSoakSessions().asyncExpand((sessions) {
+      return db.watchAllOrchidsMap().asyncExpand((orchidMap) {
+        return db.watchTasksDueToday().asyncExpand((todayTasks) {
+          return db.watchRecentCareLogs(days: 14).asyncExpand((recentLogs) {
+            return db.watchUpcomingTasks(days: 14).map((upcomingTasks) {
+              return _AgendaData(
+                activeSessions: sessions,
+                orchidMap: orchidMap,
+                todayTasks: todayTasks,
+                recentLogs: recentLogs,
+                upcomingTasks: upcomingTasks,
+              );
+            });
+          });
+        });
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final db = Provider.of<AppDatabase>(context);
 
+    // Rebuild combined stream only when db changes or refresh is triggered
+    if (_agendaStream == null || _lastDb != db) {
+      _agendaStream = _buildCombinedStream(db);
+      _lastDb = db;
+    }
+
     return Scaffold(
-      body: StreamBuilder<List<SoakSession>>(
+      body: StreamBuilder<_AgendaData>(
         key: _refreshKey,
-        stream: db.watchActiveSoakSessions(),
-        builder: (context, soakSnapshot) {
-          final activeSessions = soakSnapshot.data ?? [];
+        stream: _agendaStream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return CustomScrollView(
+              slivers: [
+                OrchidSliverAppBar(
+                  title: 'Agenda',
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.refresh),
+                      onPressed: _refresh,
+                    ),
+                  ],
+                ),
+                const SliverFillRemaining(
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ],
+            );
+          }
 
-          return StreamBuilder<Map<int, Orchid>>(
-            stream: db.watchAllOrchidsMap(),
-            builder: (context, orchidSnapshot) {
-              final orchidMap = orchidSnapshot.data ?? {};
+          final data = snapshot.data;
+          if (data == null) {
+            return CustomScrollView(
+              slivers: [
+                OrchidSliverAppBar(
+                  title: 'Agenda',
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.refresh),
+                      onPressed: _refresh,
+                    ),
+                  ],
+                ),
+                const SliverFillRemaining(
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ],
+            );
+          }
 
-              return StreamBuilder<List<CareTask>>(
-                stream: db.watchTasksDueToday(),
-                builder: (context, todaySnapshot) {
-                  return FutureBuilder<Set<int>>(
-                    key: ValueKey(activeSessions.length),
-                    future: db.getActiveSessionTaskIds(),
-                    builder: (context, activeIdsSnapshot) {
-                      final activeTaskIds = activeIdsSnapshot.data ?? {};
-
-                      return StreamBuilder<List<CareLog>>(
-                        stream: db.watchRecentCareLogs(days: 14),
-                        builder: (context, logsSnapshot) {
-                          return StreamBuilder<List<CareTask>>(
-                            stream: db.watchUpcomingTasks(days: 14),
-                            builder: (context, upcomingSnapshot) {
-                              // Loading state
-                              if (todaySnapshot.connectionState == ConnectionState.waiting &&
-                                  logsSnapshot.connectionState == ConnectionState.waiting) {
-                                return CustomScrollView(
-                                  slivers: [
-                                    OrchidSliverAppBar(
-                                      title: 'Agenda',
-                                      actions: [
-                                        IconButton(
-                                          icon: const Icon(Icons.refresh),
-                                          onPressed: _refresh,
-                                        ),
-                                      ],
-                                    ),
-                                    const SliverFillRemaining(
-                                      child: Center(child: CircularProgressIndicator()),
-                                    ),
-                                  ],
-                                );
-                              }
-
-                              final todayTasks = todaySnapshot.data ?? [];
-                              final recentLogs = logsSnapshot.data ?? [];
-                              final upcomingTasks = upcomingSnapshot.data ?? [];
-
-                              return _buildAgendaContent(
-                                context,
-                                db,
-                                orchidMap,
-                                activeSessions,
-                                activeTaskIds,
-                                todayTasks,
-                                recentLogs,
-                                upcomingTasks,
-                              );
-                            },
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
+          return FutureBuilder<Set<int>>(
+            key: ValueKey(data.activeSessions.length),
+            future: db.getActiveSessionTaskIds(),
+            builder: (context, activeIdsSnapshot) {
+              final activeTaskIds = activeIdsSnapshot.data ?? {};
+              return _buildAgendaContent(
+                context, db, data, activeTaskIds,
               );
             },
           );
@@ -127,19 +160,15 @@ class _AgendaScreenState extends State<AgendaScreen> {
   Widget _buildAgendaContent(
     BuildContext context,
     AppDatabase db,
-    Map<int, Orchid> orchidMap,
-    List<SoakSession> activeSessions,
+    _AgendaData data,
     Set<int> activeTaskIds,
-    List<CareTask> todayTasks,
-    List<CareLog> recentLogs,
-    List<CareTask> upcomingTasks,
   ) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
     // ── Past days: group logs by date ──
     final pastDays = <DateTime, List<CareLog>>{};
-    for (final log in recentLogs) {
+    for (final log in data.recentLogs) {
       final day = DateTime(log.completedAt.year, log.completedAt.month, log.completedAt.day);
       if (day.isBefore(today)) {
         pastDays.putIfAbsent(day, () => []).add(log);
@@ -149,7 +178,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
 
     // ── Future days: group tasks by nextDue date ──
     final futureDays = <DateTime, List<CareTask>>{};
-    for (final task in upcomingTasks) {
+    for (final task in data.upcomingTasks) {
       final day = DateTime(task.nextDue.year, task.nextDue.month, task.nextDue.day);
       futureDays.putIfAbsent(day, () => []).add(task);
     }
@@ -157,8 +186,8 @@ class _AgendaScreenState extends State<AgendaScreen> {
 
     // ── Check if totally empty ──
     final hasContent = pastDays.isNotEmpty ||
-        todayTasks.isNotEmpty ||
-        activeSessions.isNotEmpty ||
+        data.todayTasks.isNotEmpty ||
+        data.activeSessions.isNotEmpty ||
         futureDays.isNotEmpty;
 
     final slivers = <Widget>[];
@@ -213,32 +242,37 @@ class _AgendaScreenState extends State<AgendaScreen> {
       ),
     );
 
-    // ── Past day sections — each wrapped in a card ──
+    // ── Past day sections — using OrchidCard with gradient header ──
     for (final day in sortedPastDays) {
       final logs = pastDays[day]!;
       slivers.add(
         SliverToBoxAdapter(
-          child: _buildDateSectionCard(
-            context,
-            day: day,
-            today: today,
-            type: _DateSectionType.past,
-            count: logs.length,
-            child: Column(
-              children: [
-                for (int i = 0; i < logs.length; i++) ...[
-                  if (i > 0)
-                    Divider(
-                      height: 1,
-                      indent: 56,
-                      color: AppTheme.divider.withValues(alpha: 0.4),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: OrchidCard(
+              margin: EdgeInsets.zero,
+              padding: EdgeInsets.zero,
+              header: GradientHeader(
+                gradientStart: AppTheme.secondary,
+                gradientEnd: AppTheme.secondary.withValues(alpha: 0.7),
+                child: _buildDateHeaderRow(day, '${logs.length} done'),
+              ),
+              child: Column(
+                children: [
+                  for (int i = 0; i < logs.length; i++) ...[
+                    if (i > 0)
+                      Divider(
+                        height: 1,
+                        indent: 56,
+                        color: AppTheme.divider.withValues(alpha: 0.4),
+                      ),
+                    _PastLogTile(
+                      log: logs[i],
+                      orchidName: data.orchidMap[logs[i].orchidId]?.name ?? 'Unknown',
                     ),
-                  _PastLogTile(
-                    log: logs[i],
-                    orchidName: orchidMap[logs[i].orchidId]?.name ?? 'Unknown',
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -249,23 +283,23 @@ class _AgendaScreenState extends State<AgendaScreen> {
     slivers.add(
       SliverToBoxAdapter(
         key: _todayKey,
-        child: _buildTodayDateLabel(today, todayTasks.length),
+        child: _buildTodayDateLabel(today, data.todayTasks.length),
       ),
     );
 
     // Active soak sessions
-    if (activeSessions.isNotEmpty) {
+    if (data.activeSessions.isNotEmpty) {
       slivers.add(
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) => SoakSessionCard(
-                session: activeSessions[index],
+                session: data.activeSessions[index],
                 db: db,
                 onCompleted: _refresh,
               ),
-              childCount: activeSessions.length,
+              childCount: data.activeSessions.length,
             ),
           ),
         ),
@@ -273,9 +307,9 @@ class _AgendaScreenState extends State<AgendaScreen> {
     }
 
     // Today tasks grouped by orchid
-    if (todayTasks.isNotEmpty) {
-      slivers.addAll(_buildTodayTaskSlivers(context, db, todayTasks, orchidMap, activeTaskIds));
-    } else if (activeSessions.isEmpty) {
+    if (data.todayTasks.isNotEmpty) {
+      slivers.addAll(_buildTodayTaskSlivers(context, db, data.todayTasks, data.orchidMap, activeTaskIds));
+    } else if (data.activeSessions.isEmpty) {
       slivers.add(
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -312,7 +346,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
     }
 
     // Today's completed logs
-    final todayLogs = recentLogs.where((log) {
+    final todayLogs = data.recentLogs.where((log) {
       final day = DateTime(log.completedAt.year, log.completedAt.month, log.completedAt.day);
       return day == today;
     }).toList();
@@ -355,20 +389,9 @@ class _AgendaScreenState extends State<AgendaScreen> {
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           sliver: SliverToBoxAdapter(
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppTheme.cardBackground,
-                borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-                border: Border.all(color: AppTheme.cardBorder, width: 0.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              clipBehavior: Clip.antiAlias,
+            child: OrchidCard(
+              margin: EdgeInsets.zero,
+              padding: EdgeInsets.zero,
               child: Column(
                 children: [
                   for (int i = 0; i < todayLogs.length; i++) ...[
@@ -380,7 +403,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                       ),
                     _PastLogTile(
                       log: todayLogs[i],
-                      orchidName: orchidMap[todayLogs[i].orchidId]?.name ?? 'Unknown',
+                      orchidName: data.orchidMap[todayLogs[i].orchidId]?.name ?? 'Unknown',
                     ),
                   ],
                 ],
@@ -394,37 +417,45 @@ class _AgendaScreenState extends State<AgendaScreen> {
     // ── Health check-in prompts ──
     slivers.add(
       SliverToBoxAdapter(
-        child: _HealthCheckInSection(orchidMap: orchidMap, recentLogs: recentLogs),
+        child: _HealthCheckInSection(orchidMap: data.orchidMap, recentLogs: data.recentLogs),
       ),
     );
 
-    // ── Future day sections — each wrapped in a card ──
+    // ── Future day sections — using OrchidCard with gradient header ──
     for (final day in sortedFutureDays) {
       final tasks = futureDays[day]!;
       slivers.add(
         SliverToBoxAdapter(
-          child: _buildDateSectionCard(
-            context,
-            day: day,
-            today: today,
-            type: _DateSectionType.future,
-            count: tasks.length,
-            child: Column(
-              children: [
-                for (int i = 0; i < tasks.length; i++) ...[
-                  if (i > 0)
-                    Divider(
-                      height: 1,
-                      indent: 56,
-                      color: AppTheme.divider.withValues(alpha: 0.4),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: OrchidCard(
+              margin: EdgeInsets.zero,
+              padding: EdgeInsets.zero,
+              header: GradientHeader(
+                gradientStart: AppTheme.statusUpcoming,
+                gradientEnd: AppTheme.statusUpcoming.withValues(alpha: 0.7),
+                child: _buildDateHeaderRow(
+                  day,
+                  '${tasks.length} task${tasks.length == 1 ? '' : 's'}',
+                ),
+              ),
+              child: Column(
+                children: [
+                  for (int i = 0; i < tasks.length; i++) ...[
+                    if (i > 0)
+                      Divider(
+                        height: 1,
+                        indent: 56,
+                        color: AppTheme.divider.withValues(alpha: 0.4),
+                      ),
+                    _UpcomingTaskTile(
+                      task: tasks[i],
+                      orchidName: data.orchidMap[tasks[i].orchidId]?.name ?? 'Unknown',
+                      today: today,
                     ),
-                  _UpcomingTaskTile(
-                    task: tasks[i],
-                    orchidName: orchidMap[tasks[i].orchidId]?.name ?? 'Unknown',
-                    today: today,
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -438,6 +469,74 @@ class _AgendaScreenState extends State<AgendaScreen> {
     _scrollToToday();
 
     return CustomScrollView(slivers: slivers);
+  }
+
+  // ── Shared date header row used inside GradientHeader ──
+  Widget _buildDateHeaderRow(DateTime day, String countLabel) {
+    final dayLabel = DateFormat('MMM d').format(day);
+    final weekdayLabel = DateFormat('EEEE').format(day);
+
+    return Row(
+      children: [
+        // Day number circle
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white.withValues(alpha: 0.25),
+          ),
+          child: Center(
+            child: Text(
+              '${day.day}',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                weekdayLabel,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              Text(
+                dayLabel,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.white.withValues(alpha: 0.8),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.25),
+            borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+          ),
+          child: Text(
+            countLabel,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   // ── Today date label row (not wrapped in card — orchid cards provide grouping) ──
@@ -460,7 +559,6 @@ class _AgendaScreenState extends State<AgendaScreen> {
                 BoxShadow(
                   color: AppTheme.primary.withValues(alpha: 0.25),
                   blurRadius: 12,
-                  spreadRadius: 2,
                 ),
               ],
             ),
@@ -492,7 +590,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppTheme.primary,
                         borderRadius: BorderRadius.circular(AppTheme.radiusFull),
@@ -539,133 +637,6 @@ class _AgendaScreenState extends State<AgendaScreen> {
     );
   }
 
-  // ── Date section card with gradient header strip (past / future) ──
-  Widget _buildDateSectionCard(
-    BuildContext context, {
-    required DateTime day,
-    required DateTime today,
-    required _DateSectionType type,
-    required int count,
-    required Widget child,
-  }) {
-    final dayLabel = DateFormat('MMM d').format(day);
-    final weekdayLabel = DateFormat('EEEE').format(day);
-
-    final Color gradientStart;
-    final Color gradientEnd;
-    final String countLabel;
-
-    switch (type) {
-      case _DateSectionType.past:
-        gradientStart = AppTheme.secondary;
-        gradientEnd = AppTheme.secondary.withValues(alpha: 0.7);
-        countLabel = '$count done';
-      case _DateSectionType.future:
-        gradientStart = AppTheme.statusUpcoming;
-        gradientEnd = AppTheme.statusUpcoming.withValues(alpha: 0.7);
-        countLabel = '$count task${count == 1 ? '' : 's'}';
-    }
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppTheme.cardBackground,
-          borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-          border: Border.all(color: AppTheme.cardBorder, width: 0.5),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Gradient header strip
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [gradientStart, gradientEnd],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Row(
-                children: [
-                  // Day number
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.25),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${day.day}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          weekdayLabel,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Text(
-                          dayLabel,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.white.withValues(alpha: 0.8),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (count > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.25),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                      ),
-                      child: Text(
-                        countLabel,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            // Child content (log tiles / task tiles)
-            child,
-          ],
-        ),
-      ),
-    );
-  }
-
   // ── Today tasks grouped by orchid — hero cards with gradient headers ──
   List<Widget> _buildTodayTaskSlivers(
     BuildContext context,
@@ -703,51 +674,32 @@ class _AgendaScreenState extends State<AgendaScreen> {
                   ),
                 );
               },
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppTheme.cardBackground,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-                  border: Border.all(color: AppTheme.cardBorder, width: 0.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Gradient header strip
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [AppTheme.sliverGradientStart, AppTheme.sliverGradientEnd],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+              child: OrchidCard(
+                margin: EdgeInsets.zero,
+                padding: EdgeInsets.zero,
+                header: GradientHeader(
+                  gradientStart: AppTheme.sliverGradientStart,
+                  gradientEnd: AppTheme.sliverGradientEnd,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.local_florist, color: AppTheme.textOnPrimary, size: 22),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          orchidName,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textOnPrimary,
+                          ),
                         ),
                       ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.local_florist, color: AppTheme.textOnPrimary, size: 22),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              orchidName,
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.textOnPrimary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Task rows
+                    ],
+                  ),
+                ),
+                child: Column(
+                  children: [
                     ...entry.value.asMap().entries.map((taskEntry) {
                       final taskIndex = taskEntry.key;
                       final task = taskEntry.value;
@@ -756,7 +708,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                           if (taskIndex > 0)
                             Divider(
                               height: 1,
-                              indent: 68,
+                              indent: 56,
                               color: AppTheme.divider.withValues(alpha: 0.5),
                             ),
                           _buildTodayTaskRow(context, db, task, orchidName, activeTaskIds),
@@ -809,10 +761,10 @@ class _AgendaScreenState extends State<AgendaScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          // 44x44 rounded square icon with gradient fill
+          // 40x40 rounded square icon with gradient fill (normalized from 44)
           Container(
-            width: 44,
-            height: 44,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [color.withValues(alpha: 0.2), color.withValues(alpha: 0.08)],
@@ -821,7 +773,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
               ),
               borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
             ),
-            child: Icon(icon, color: color, size: 24),
+            child: Icon(icon, color: color, size: 22),
           ),
           const SizedBox(width: 12),
           // Task info
@@ -878,18 +830,17 @@ class _AgendaScreenState extends State<AgendaScreen> {
               style: FilledButton.styleFrom(
                 backgroundColor: buttonColor.withValues(alpha: 0.15),
                 foregroundColor: buttonColor,
-                minimumSize: const Size(0, 36),
+                minimumSize: const Size(0, 48),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                 ),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(buttonIcon, size: 16),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 8),
                   Text(
                     buttonLabel,
                     style: const TextStyle(
@@ -931,7 +882,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                 fontSize: 13,
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Icon(Icons.snooze, color: AppTheme.accent.withValues(alpha: 0.9), size: 20),
           ],
         ),
@@ -940,9 +891,6 @@ class _AgendaScreenState extends State<AgendaScreen> {
     );
   }
 }
-
-// ── Date section type for gradient selection ──
-enum _DateSectionType { past, future }
 
 // ============================================================
 // Past care log tile — compact, no explicit border
@@ -966,12 +914,12 @@ class _PastLogTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Row(
         children: [
-          // Circular icon with check overlay badge
+          // 32px circular icon (normalized from 36)
           Stack(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: color.withValues(alpha: 0.1),
@@ -979,7 +927,7 @@ class _PastLogTile extends StatelessWidget {
                 child: Icon(
                   log.skipped ? Icons.skip_next : icon,
                   color: color.withValues(alpha: 0.7),
-                  size: 18,
+                  size: 16,
                 ),
               ),
               if (!log.skipped)
@@ -1083,7 +1031,7 @@ class _MilestoneBanner extends StatelessWidget {
             : Icons.emoji_events;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [color.withValues(alpha: 0.12), color.withValues(alpha: 0.04)],
@@ -1100,7 +1048,7 @@ class _MilestoneBanner extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
+        padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
         child: Row(
           children: [
             // Glowing circle icon
@@ -1114,7 +1062,6 @@ class _MilestoneBanner extends StatelessWidget {
                   BoxShadow(
                     color: color.withValues(alpha: 0.2),
                     blurRadius: 8,
-                    spreadRadius: 1,
                   ),
                 ],
               ),
@@ -1182,7 +1129,7 @@ class _HealthCheckInSection extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
           border: Border.all(color: AppTheme.bloom.withValues(alpha: 0.12)),
         ),
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1200,7 +1147,7 @@ class _HealthCheckInSection extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             ...neglectedOrchids.asMap().entries.map((entry) {
               final orchid = entry.value;
               final isLast = entry.key == neglectedOrchids.length - 1;
@@ -1225,7 +1172,7 @@ class _HealthCheckInSection extends StatelessWidget {
                             ),
                             child: const Icon(Icons.local_florist, color: AppTheme.bloom, size: 16),
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1287,16 +1234,16 @@ class _UpcomingTaskTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          // Circular icon with dashed-feel border
+          // 32px circular icon (normalized from 36)
           Container(
-            width: 36,
-            height: 36,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: color.withValues(alpha: 0.08),
               border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
             ),
-            child: Icon(icon, color: color.withValues(alpha: 0.7), size: 18),
+            child: Icon(icon, color: color.withValues(alpha: 0.7), size: 16),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1315,7 +1262,7 @@ class _UpcomingTaskTile extends StatelessWidget {
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: AppTheme.statusUpcoming.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(AppTheme.radiusFull),

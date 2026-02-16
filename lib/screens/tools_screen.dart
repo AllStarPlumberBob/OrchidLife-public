@@ -731,7 +731,7 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
                       _buildAIButton(
                         'Perplexity',
                         Icons.travel_explore,
-                        const Color(0xFF20808D),
+                        AppTheme.brandPerplexity,
                         () => _openPerplexity(),
                       ),
                       if (!_isTextMode)

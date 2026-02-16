@@ -12,6 +12,7 @@ import '../widgets/page_transitions.dart';
 import '../widgets/add_care_task_dialog.dart';
 import '../widgets/bloom_stage_widget.dart';
 import '../widgets/photo_journal_section.dart';
+import '../widgets/section_header.dart';
 import '../services/seasonal_context_service.dart';
 import 'add_edit_orchid_screen.dart';
 import 'species_profile_screen.dart';
@@ -248,20 +249,14 @@ class OrchidDetailScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.local_florist, color: AppTheme.bloom, size: 20),
-              const SizedBox(width: 8),
-              const Text(
-                'Bloom Status',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const Spacer(),
-              TextButton(
-                onPressed: () => _updateBloomStage(context, db, orchid),
-                child: const Text('Update'),
-              ),
-            ],
+          SectionHeader(
+            icon: Icons.local_florist,
+            color: AppTheme.bloom,
+            title: 'Bloom Status',
+            trailing: TextButton(
+              onPressed: () => _updateBloomStage(context, db, orchid),
+              child: const Text('Update'),
+            ),
           ),
           const SizedBox(height: 12),
           BloomStageWidget(
@@ -278,15 +273,10 @@ class OrchidDetailScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
-            children: [
-              Icon(Icons.timeline, color: AppTheme.bloom, size: 20),
-              SizedBox(width: 8),
-              Text(
-                'Bloom History',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ],
+          const SectionHeader(
+            icon: Icons.timeline,
+            color: AppTheme.bloom,
+            title: 'Bloom History',
           ),
           const SizedBox(height: 8),
           StreamBuilder<List<BloomLog>>(
@@ -338,22 +328,15 @@ class OrchidDetailScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Care Schedule',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              TextButton.icon(
-                onPressed: () => _addCareTask(context, db),
-                icon: const Icon(Icons.add),
-                label: const Text('Add'),
-              ),
-            ],
+          SectionHeader(
+            icon: Icons.calendar_month,
+            color: AppTheme.primary,
+            title: 'Care Schedule',
+            trailing: TextButton.icon(
+              onPressed: () => _addCareTask(context, db),
+              icon: const Icon(Icons.add),
+              label: const Text('Add'),
+            ),
           ),
           const SizedBox(height: 8),
           StreamBuilder<List<CareTask>>(
@@ -445,12 +428,10 @@ class OrchidDetailScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Care History',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+          const SectionHeader(
+            icon: Icons.history,
+            color: AppTheme.textSecondary,
+            title: 'Care History',
           ),
           const SizedBox(height: 8),
           StreamBuilder<List<CareLog>>(
@@ -627,15 +608,10 @@ class _LightExposureCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.light_mode, color: AppTheme.statusNeedsCare, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          'Light Exposure',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                      ],
+                    const SectionHeader(
+                      icon: Icons.light_mode,
+                      color: AppTheme.statusNeedsCare,
+                      title: 'Light Exposure',
                     ),
                     const SizedBox(height: 12),
                     if (reading != null) ...[
@@ -737,15 +713,10 @@ class _TemperatureCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
-                  children: [
-                    Icon(Icons.thermostat, color: AppTheme.statusOverdue, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Temperature',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                  ],
+                const SectionHeader(
+                  icon: Icons.thermostat,
+                  color: AppTheme.statusOverdue,
+                  title: 'Temperature',
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -840,15 +811,10 @@ class _SeasonalTipsCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.wb_sunny, color: AppTheme.statusNeedsCare, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${SeasonalContextService.getSeasonName()} Tips',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                  ],
+                SectionHeader(
+                  icon: Icons.wb_sunny,
+                  color: AppTheme.statusNeedsCare,
+                  title: '${SeasonalContextService.getSeasonName()} Tips',
                 ),
                 const SizedBox(height: 8),
                 ...tips.take(3).map((tip) => Padding(
@@ -938,15 +904,10 @@ class _CareInsightsCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
-                  children: [
-                    Icon(Icons.insights, color: AppTheme.inspectPurple, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Care Insights',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                  ],
+                const SectionHeader(
+                  icon: Icons.insights,
+                  color: AppTheme.inspectPurple,
+                  title: 'Care Insights',
                 ),
                 const SizedBox(height: 8),
                 ...insights.take(3).map((insight) {

@@ -44,53 +44,58 @@ class FloatingBottomNav extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
-        children: List.generate(_items.length, (i) {
-          final item = _items[i];
-          final selected = i == currentIndex;
-          return Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => onTap(i),
-              child: Center(
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeInOut,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? Colors.white.withValues(alpha: 0.2)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        selected ? item.selectedIcon : item.icon,
-                        size: 24,
-                        color: selected
-                            ? Colors.white
-                            : Colors.white.withValues(alpha: 0.7),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        item.label,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: Row(
+          children: List.generate(_items.length, (i) {
+            final item = _items[i];
+            final selected = i == currentIndex;
+            return Expanded(
+              child: InkWell(
+                onTap: () => onTap(i),
+                splashColor: Colors.white.withValues(alpha: 0.15),
+                highlightColor: Colors.white.withValues(alpha: 0.1),
+                child: Center(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeInOut,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? Colors.white.withValues(alpha: 0.2)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          selected ? item.selectedIcon : item.icon,
+                          size: 24,
                           color: selected
                               ? Colors.white
                               : Colors.white.withValues(alpha: 0.7),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 4),
+                        Text(
+                          item.label,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                            color: selected
+                                ? Colors.white
+                                : Colors.white.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          );
-        }),
+            );
+          }),
+        ),
       ),
     );
   }

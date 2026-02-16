@@ -92,6 +92,12 @@ class AppTheme {
   static const Color divider = Color(0xFFE3E0DB); // Warm gray
 
   // ══════════════════════════════════════════════════════════════════════════
+  // BRAND COLORS (external services)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  static const Color brandPerplexity = Color(0xFF20808D); // Perplexity teal
+
+  // ══════════════════════════════════════════════════════════════════════════
   // SPACING
   // ══════════════════════════════════════════════════════════════════════════
 
@@ -489,7 +495,7 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryLight,
-          foregroundColor: Colors.black,
+          foregroundColor: const Color(0xFF1A1C1A), // Dark text on light button
           minimumSize: const Size.fromHeight(touchTargetPreferred),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusMedium),

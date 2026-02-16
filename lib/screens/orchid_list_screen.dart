@@ -309,13 +309,13 @@ class _GalleryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        OrchidPageRoute(builder: (_) => OrchidDetailScreen(orchidId: orchid.id)),
-      ),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.push(
+          context,
+          OrchidPageRoute(builder: (_) => OrchidDetailScreen(orchidId: orchid.id)),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

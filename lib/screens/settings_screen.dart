@@ -5,6 +5,7 @@ import '../database/database.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/orchid_sliver_app_bar.dart';
+import '../widgets/section_header.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -63,7 +64,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SliverList(
             delegate: SliverChildListDelegate([
               // Notifications section
-              _buildSectionHeader('Notifications'),
+              _buildSectionHeader('Notifications', icon: Icons.notifications_outlined),
               SwitchListTile(
                 title: const Text('Enable Notifications'),
                 subtitle: Text(_isTogglingNotifications
@@ -111,7 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const Divider(),
 
               // Default intervals section
-              _buildSectionHeader('Default Care Intervals'),
+              _buildSectionHeader('Default Care Intervals', icon: Icons.schedule),
               ListTile(
                 title: const Text('Watering'),
                 subtitle: Text('Every $_defaultWaterInterval days'),
@@ -160,7 +161,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const Divider(),
 
               // Data management section
-              _buildSectionHeader('Data Management'),
+              _buildSectionHeader('Data Management', icon: Icons.storage),
               ListTile(
                 title: const Text('Clear Demo Data'),
                 subtitle: const Text('Remove the demo orchid and its data'),
@@ -192,7 +193,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const Divider(),
 
               // About section
-              _buildSectionHeader('About'),
+              _buildSectionHeader('About', icon: Icons.info_outline),
               ListTile(
                 title: const Text('OrchidLife'),
                 subtitle: const Text('Version 1.0.0'),
@@ -228,16 +229,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, {IconData? icon}) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.bold,
-          color: AppTheme.primary,
-        ),
+      child: SectionHeader(
+        icon: icon ?? Icons.settings,
+        color: AppTheme.primary,
+        title: title,
       ),
     );
   }
