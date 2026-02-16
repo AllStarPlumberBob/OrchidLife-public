@@ -166,8 +166,8 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
             OutlinedButton(
               onPressed: _back,
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.textSecondary,
-                side: BorderSide(color: AppTheme.divider.withValues(alpha: 0.7)),
+                foregroundColor: AppTheme.textPrimary.withValues(alpha: 0.6),
+                side: const BorderSide(color: AppTheme.divider),
               ),
               child: const Text('Back'),
             ),
@@ -177,7 +177,7 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
               onPressed: _next,
               child: Text(
                 'Skip',
-                style: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.8)),
+                style: TextStyle(color: AppTheme.textPrimary.withValues(alpha: 0.5)),
               ),
             ),
             const SizedBox(width: 8),
@@ -233,9 +233,9 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
             title: 'Start with a photo',
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Take a photo or choose from your gallery.',
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+            style: TextStyle(color: AppTheme.textPrimary.withValues(alpha: 0.7), fontSize: 14),
           ),
           const SizedBox(height: 20),
           Expanded(
@@ -293,9 +293,9 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
           child: Icon(Icons.add_a_photo, size: 32, color: AppTheme.primary.withValues(alpha: 0.4)),
         ),
         const SizedBox(height: 16),
-        const Text('Tap to add a photo', style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+        Text('Tap to add a photo', style: TextStyle(color: AppTheme.textPrimary.withValues(alpha: 0.6), fontSize: 14)),
         const SizedBox(height: 4),
-        Text('Optional', style: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.6), fontSize: 12)),
+        Text('Optional', style: TextStyle(color: AppTheme.textPrimary.withValues(alpha: 0.4), fontSize: 12)),
       ],
     );
   }
@@ -355,16 +355,16 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
             title: 'Identify your orchid',
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Use AI to identify or select from the database.',
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+            style: TextStyle(color: AppTheme.textPrimary.withValues(alpha: 0.7), fontSize: 14),
           ),
           const SizedBox(height: 20),
           // AI identification buttons
           if (_photoPath != null) ...[
             Text('Identify with AI', style: TextStyle(
               fontSize: 13, fontWeight: FontWeight.w600,
-              color: AppTheme.textSecondary.withValues(alpha: 0.8),
+              color: AppTheme.textPrimary.withValues(alpha: 0.6),
               letterSpacing: 0.3,
             )),
             const SizedBox(height: 8),
@@ -394,7 +394,7 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
           // Species database picker
           Text('Select from database', style: TextStyle(
             fontSize: 13, fontWeight: FontWeight.w600,
-            color: AppTheme.textSecondary.withValues(alpha: 0.8),
+            color: AppTheme.textPrimary.withValues(alpha: 0.6),
             letterSpacing: 0.3,
           )),
           const SizedBox(height: 8),
@@ -456,7 +456,7 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
                               const SizedBox(height: 2),
                               Text(
                                 '${sp.genus}${sp.difficultyLevel != null ? ' \u00b7 ${sp.difficultyLevel}' : ''}',
-                                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                                style: TextStyle(fontSize: 12, color: AppTheme.textPrimary.withValues(alpha: 0.55)),
                               ),
                             ],
                           ),
@@ -490,7 +490,7 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
       label: Text(label),
       style: OutlinedButton.styleFrom(
         foregroundColor: AppTheme.textPrimary,
-        side: BorderSide(color: AppTheme.divider.withValues(alpha: 0.7)),
+        side: const BorderSide(color: AppTheme.divider),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
     );
@@ -558,14 +558,14 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.calendar_today, color: AppTheme.textSecondary),
+                  leading: Icon(Icons.calendar_today, color: AppTheme.textPrimary.withValues(alpha: 0.5)),
                   title: const Text('Date Acquired'),
                   subtitle: Text(_dateAcquired != null
                       ? '${_dateAcquired!.month}/${_dateAcquired!.day}/${_dateAcquired!.year}'
                       : 'Not set'),
                   trailing: _dateAcquired != null
                       ? IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: () => setState(() => _dateAcquired = null))
-                      : const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
+                      : Icon(Icons.chevron_right, color: AppTheme.textPrimary.withValues(alpha: 0.4)),
                   onTap: () async {
                     final picked = await showDatePicker(
                       context: context,
@@ -578,7 +578,7 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
                 ),
                 Divider(height: 1, color: AppTheme.divider.withValues(alpha: 0.4)),
                 SwitchListTile(
-                  secondary: Icon(Icons.healing, color: _isRescue ? AppTheme.statusOverdue : AppTheme.textSecondary),
+                  secondary: Icon(Icons.healing, color: _isRescue ? AppTheme.statusOverdue : AppTheme.textPrimary.withValues(alpha: 0.4)),
                   title: const Text('Rescue Orchid'),
                   subtitle: const Text('This orchid needs extra TLC'),
                   value: _isRescue,
@@ -618,11 +618,11 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
             title: 'Health check-up',
           ),
           const SizedBox(height: 4),
-          const Align(
+          Align(
             alignment: Alignment.centerLeft,
             child: Text(
               'Want an AI health assessment? This step is optional.',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary.withValues(alpha: 0.7), fontSize: 14),
             ),
           ),
           const SizedBox(height: 24),
@@ -658,10 +658,10 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   'Upload your orchid photo to an AI service.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                  style: TextStyle(color: AppTheme.textPrimary.withValues(alpha: 0.6), fontSize: 13),
                 ),
                 const SizedBox(height: 16),
                 Wrap(
@@ -701,8 +701,8 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
                         const SizedBox(width: 4),
                         Text(
                           'Health check opened',
-                          style: TextStyle(
-                            color: AppTheme.statusCompleted.withValues(alpha: 0.8),
+                          style: const TextStyle(
+                            color: AppTheme.statusCompleted,
                             fontSize: 13,
                           ),
                         ),
@@ -735,7 +735,7 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
             _speciesProfileId != null
                 ? 'Pre-filled based on species. Adjust as needed.'
                 : 'Set up care tasks for your orchid.',
-            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+            style: TextStyle(color: AppTheme.textPrimary.withValues(alpha: 0.7), fontSize: 14),
           ),
           const SizedBox(height: 20),
           // Soak duration inside a card
@@ -754,7 +754,7 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
               ),
               title: const Text('Soak Duration'),
               subtitle: Text('$_soakDuration minutes'),
-              trailing: const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
+              trailing: Icon(Icons.chevron_right, color: AppTheme.textPrimary.withValues(alpha: 0.4)),
               onTap: () async {
                 final controller = TextEditingController(text: '$_soakDuration');
                 final result = await showDialog<int>(
@@ -797,7 +797,7 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
             children: [
               Text('Care Tasks', style: TextStyle(
                 fontSize: 13, fontWeight: FontWeight.w600,
-                color: AppTheme.textSecondary.withValues(alpha: 0.8),
+                color: AppTheme.textPrimary.withValues(alpha: 0.6),
                 letterSpacing: 0.3,
               )),
               TextButton.icon(
@@ -817,7 +817,7 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Center(
                 child: Text('No care tasks yet', style: TextStyle(
-                  color: AppTheme.textSecondary.withValues(alpha: 0.6), fontSize: 13,
+                  color: AppTheme.textPrimary.withValues(alpha: 0.45), fontSize: 13,
                 )),
               ),
             )
@@ -859,12 +859,12 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(displayName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                                  Text('Every $intervalDays days', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                                  Text('Every $intervalDays days', style: TextStyle(fontSize: 12, color: AppTheme.textPrimary.withValues(alpha: 0.55))),
                                 ],
                               ),
                             ),
                             IconButton(
-                              icon: Icon(Icons.close, size: 18, color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+                              icon: Icon(Icons.close, size: 18, color: AppTheme.textPrimary.withValues(alpha: 0.35)),
                               onPressed: () => setState(() => _pendingCareTasks.removeAt(index)),
                               visualDensity: VisualDensity.compact,
                             ),
@@ -1002,11 +1002,11 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
                       ),
                       if (_varietyController.text.isNotEmpty) ...[
                         const SizedBox(height: 2),
-                        Text(_varietyController.text, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+                        Text(_varietyController.text, style: TextStyle(color: AppTheme.textPrimary.withValues(alpha: 0.6), fontSize: 14)),
                       ],
                       if (speciesName != null) ...[
                         const SizedBox(height: 2),
-                        Text(speciesName, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                        Text(speciesName, style: TextStyle(fontSize: 12, color: AppTheme.textPrimary.withValues(alpha: 0.55))),
                       ],
                       if (_isRescue) ...[
                         const SizedBox(height: 4),
@@ -1079,7 +1079,7 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
                             Expanded(child: Text(displayName, style: const TextStyle(fontSize: 14))),
                             Text(
                               'Every ${task['intervalDays']} days',
-                              style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                              style: TextStyle(fontSize: 12, color: AppTheme.textPrimary.withValues(alpha: 0.55)),
                             ),
                           ],
                         ),
@@ -1100,9 +1100,9 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: AppTheme.textSecondary),
+          Icon(icon, size: 18, color: AppTheme.textPrimary.withValues(alpha: 0.5)),
           const SizedBox(width: 12),
-          Text(label, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+          Text(label, style: TextStyle(color: AppTheme.textPrimary.withValues(alpha: 0.55), fontSize: 13)),
           const Spacer(),
           Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         ],

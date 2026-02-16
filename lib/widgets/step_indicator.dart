@@ -70,7 +70,7 @@ class StepIndicator extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-                          color: isActive ? Colors.white : AppTheme.textSecondary,
+                          color: isActive ? Colors.white : AppTheme.textPrimary.withValues(alpha: 0.5),
                         ),
                       ),
               ),
@@ -85,7 +85,7 @@ class StepIndicator extends StatelessWidget {
                       ? AppTheme.primary
                       : isCompleted
                           ? AppTheme.textPrimary
-                          : AppTheme.textSecondary,
+                          : AppTheme.textPrimary.withValues(alpha: 0.5),
                   fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
                 ),
               ),
