@@ -213,35 +213,45 @@ class _AgendaScreenState extends State<AgendaScreen> {
       ),
     );
 
-    // ── Past day sections ──
+    // ── Past day sections — each wrapped in a card ──
     for (final day in sortedPastDays) {
       final logs = pastDays[day]!;
-      slivers.add(_buildDateHeader(context, day, today, logCount: logs.length));
       slivers.add(
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) => _PastLogTile(
-                log: logs[index],
-                orchidName: orchidMap[logs[index].orchidId]?.name ?? 'Unknown',
-              ),
-              childCount: logs.length,
+        SliverToBoxAdapter(
+          child: _buildDateSectionCard(
+            context,
+            day: day,
+            today: today,
+            type: _DateSectionType.past,
+            count: logs.length,
+            child: Column(
+              children: [
+                for (int i = 0; i < logs.length; i++) ...[
+                  if (i > 0)
+                    Divider(
+                      height: 1,
+                      indent: 56,
+                      color: AppTheme.divider.withValues(alpha: 0.4),
+                    ),
+                  _PastLogTile(
+                    log: logs[i],
+                    orchidName: orchidMap[logs[i].orchidId]?.name ?? 'Unknown',
+                  ),
+                ],
+              ],
             ),
           ),
         ),
       );
     }
 
-    // ── Today section ──
-    slivers.add(_buildDateHeader(
-      context,
-      today,
-      today,
-      taskCount: todayTasks.length,
-      isToday: true,
-      key: _todayKey,
-    ));
+    // ── Today section — date label row + orchid-grouped cards directly ──
+    slivers.add(
+      SliverToBoxAdapter(
+        key: _todayKey,
+        child: _buildTodayDateLabel(today, todayTasks.length),
+      ),
+    );
 
     // Active soak sessions
     if (activeSessions.isNotEmpty) {
@@ -308,7 +318,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
     }).toList();
 
     if (todayLogs.isNotEmpty) {
-      // Centered divider label with checkmark
+      // Centered divider label
       slivers.add(
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
@@ -344,13 +354,37 @@ class _AgendaScreenState extends State<AgendaScreen> {
       slivers.add(
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) => _PastLogTile(
-                log: todayLogs[index],
-                orchidName: orchidMap[todayLogs[index].orchidId]?.name ?? 'Unknown',
+          sliver: SliverToBoxAdapter(
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppTheme.cardBackground,
+                borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+                border: Border.all(color: AppTheme.cardBorder, width: 0.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              childCount: todayLogs.length,
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  for (int i = 0; i < todayLogs.length; i++) ...[
+                    if (i > 0)
+                      Divider(
+                        height: 1,
+                        indent: 56,
+                        color: AppTheme.divider.withValues(alpha: 0.4),
+                      ),
+                    _PastLogTile(
+                      log: todayLogs[i],
+                      orchidName: orchidMap[todayLogs[i].orchidId]?.name ?? 'Unknown',
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         ),
@@ -364,21 +398,33 @@ class _AgendaScreenState extends State<AgendaScreen> {
       ),
     );
 
-    // ── Future day sections ──
+    // ── Future day sections — each wrapped in a card ──
     for (final day in sortedFutureDays) {
       final tasks = futureDays[day]!;
-      slivers.add(_buildDateHeader(context, day, today, taskCount: tasks.length));
       slivers.add(
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) => _UpcomingTaskTile(
-                task: tasks[index],
-                orchidName: orchidMap[tasks[index].orchidId]?.name ?? 'Unknown',
-                today: today,
-              ),
-              childCount: tasks.length,
+        SliverToBoxAdapter(
+          child: _buildDateSectionCard(
+            context,
+            day: day,
+            today: today,
+            type: _DateSectionType.future,
+            count: tasks.length,
+            child: Column(
+              children: [
+                for (int i = 0; i < tasks.length; i++) ...[
+                  if (i > 0)
+                    Divider(
+                      height: 1,
+                      indent: 56,
+                      color: AppTheme.divider.withValues(alpha: 0.4),
+                    ),
+                  _UpcomingTaskTile(
+                    task: tasks[i],
+                    orchidName: orchidMap[tasks[i].orchidId]?.name ?? 'Unknown',
+                    today: today,
+                  ),
+                ],
+              ],
             ),
           ),
         ),
@@ -394,140 +440,226 @@ class _AgendaScreenState extends State<AgendaScreen> {
     return CustomScrollView(slivers: slivers);
   }
 
-  // ── Timeline-style date header ──
-  Widget _buildDateHeader(
-    BuildContext context,
-    DateTime day,
-    DateTime today, {
-    int taskCount = 0,
-    int logCount = 0,
-    bool isToday = false,
-    Key? key,
-  }) {
-    final isPast = day.isBefore(today);
-    final dayLabel = DateFormat('MMM d').format(day);
-    final weekdayLabel = DateFormat('EEEE').format(day);
-    final count = isToday ? taskCount : (isPast ? logCount : taskCount);
+  // ── Today date label row (not wrapped in card — orchid cards provide grouping) ──
+  Widget _buildTodayDateLabel(DateTime today, int taskCount) {
+    final dayLabel = DateFormat('MMM d').format(today);
+    final weekdayLabel = DateFormat('EEEE').format(today);
 
-    final nodeColor = isToday
-        ? AppTheme.primary
-        : isPast
-            ? AppTheme.statusCompleted
-            : AppTheme.statusUpcoming;
-
-    return SliverToBoxAdapter(
-      key: key,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(16, isToday ? 20 : 16, 16, 8),
-        child: Row(
-          children: [
-            // Timeline node circle
-            Container(
-              width: isToday ? 48 : 40,
-              height: isToday ? 48 : 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isToday ? AppTheme.primary : null,
-                border: !isToday
-                    ? Border.all(
-                        color: nodeColor.withValues(alpha: 0.5),
-                        width: 2,
-                      )
-                    : null,
-                boxShadow: isToday
-                    ? [
-                        BoxShadow(
-                          color: AppTheme.primary.withValues(alpha: 0.25),
-                          blurRadius: 12,
-                          spreadRadius: 2,
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Center(
-                child: Text(
-                  '${day.day}',
-                  style: TextStyle(
-                    fontSize: isToday ? 18 : 15,
-                    fontWeight: FontWeight.bold,
-                    color: isToday ? AppTheme.textOnPrimary : nodeColor,
-                  ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+      child: Row(
+        children: [
+          // Bold day number in primary circle
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppTheme.primary,
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primary.withValues(alpha: 0.25),
+                  blurRadius: 12,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: Center(
+              child: Text(
+                '${today.day}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textOnPrimary,
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-            // Date text
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        weekdayLabel,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      weekdayLabel,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary,
+                        borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                      ),
+                      child: const Text(
+                        'Today',
                         style: TextStyle(
-                          fontSize: isToday ? 16 : 14,
-                          fontWeight: FontWeight.bold,
-                          color: isToday ? AppTheme.primary : AppTheme.textPrimary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textOnPrimary,
                         ),
                       ),
-                      if (isToday) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primary,
-                            borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                    ),
+                  ],
+                ),
+                Text(
+                  dayLabel,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.primary.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (taskCount > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+              ),
+              child: Text(
+                '$taskCount task${taskCount == 1 ? '' : 's'}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.primary,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ── Date section card with gradient header strip (past / future) ──
+  Widget _buildDateSectionCard(
+    BuildContext context, {
+    required DateTime day,
+    required DateTime today,
+    required _DateSectionType type,
+    required int count,
+    required Widget child,
+  }) {
+    final dayLabel = DateFormat('MMM d').format(day);
+    final weekdayLabel = DateFormat('EEEE').format(day);
+
+    final Color gradientStart;
+    final Color gradientEnd;
+    final String countLabel;
+
+    switch (type) {
+      case _DateSectionType.past:
+        gradientStart = AppTheme.statusCompleted;
+        gradientEnd = AppTheme.statusCompleted.withValues(alpha: 0.7);
+        countLabel = '$count done';
+      case _DateSectionType.future:
+        gradientStart = AppTheme.statusUpcoming;
+        gradientEnd = AppTheme.statusUpcoming.withValues(alpha: 0.7);
+        countLabel = '$count task${count == 1 ? '' : 's'}';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.cardBackground,
+          borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+          border: Border.all(color: AppTheme.cardBorder, width: 0.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Gradient header strip
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [gradientStart, gradientEnd],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Row(
+                children: [
+                  // Day number
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.25),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${day.day}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          weekdayLabel,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
-                          child: const Text(
-                            'Today',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.textOnPrimary,
-                            ),
+                        ),
+                        Text(
+                          dayLabel,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.white.withValues(alpha: 0.8),
                           ),
                         ),
                       ],
-                    ],
-                  ),
-                  Text(
-                    dayLabel,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isToday
-                          ? AppTheme.primary.withValues(alpha: 0.7)
-                          : AppTheme.textSecondary,
                     ),
                   ),
+                  if (count > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                      ),
+                      child: Text(
+                        countLabel,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
-            // Count badge
-            if (count > 0)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isToday
-                      ? AppTheme.primary.withValues(alpha: 0.15)
-                      : isPast
-                          ? AppTheme.statusCompleted.withValues(alpha: 0.1)
-                          : AppTheme.statusUpcoming.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                ),
-                child: Text(
-                  isPast ? '$count done' : '$count task${count == 1 ? '' : 's'}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: isToday
-                        ? AppTheme.primary
-                        : isPast
-                            ? AppTheme.statusCompleted
-                            : AppTheme.statusUpcoming,
-                  ),
-                ),
-              ),
+            // Child content (log tiles / task tiles)
+            child,
           ],
         ),
       ),
@@ -659,7 +791,21 @@ class _AgendaScreenState extends State<AgendaScreen> {
     final isWater = task.careType == CareType.water;
     final isSoaking = activeTaskIds.contains(task.id);
 
-    return Padding(
+    // Button color: water=blue, overdue=red tint, default=green
+    final Color buttonColor;
+    final String buttonLabel;
+    final IconData buttonIcon;
+    if (isWater && !isSoaking) {
+      buttonColor = isOverdue ? AppTheme.statusOverdue : AppTheme.waterBlue;
+      buttonLabel = 'Soak';
+      buttonIcon = Icons.water_drop;
+    } else {
+      buttonColor = isOverdue ? AppTheme.statusOverdue : AppTheme.primary;
+      buttonLabel = 'Done';
+      buttonIcon = Icons.check;
+    }
+
+    final rowContent = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
@@ -712,7 +858,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
               ],
             ),
           ),
-          // Action buttons
+          // Action button
           if (isSoaking)
             Chip(
               label: const Text('Soaking'),
@@ -721,63 +867,85 @@ class _AgendaScreenState extends State<AgendaScreen> {
               visualDensity: VisualDensity.compact,
             )
           else
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _circularActionButton(
-                  Icons.snooze,
-                  AppTheme.textSecondary,
-                  'Snooze 1 day',
-                  () => snoozeTaskWorkflow(context, db, task),
+            FilledButton.tonal(
+              onPressed: () {
+                if (isWater) {
+                  startSoakWorkflow(context, db, task, orchidName, _refresh);
+                } else {
+                  completeTaskWorkflow(context, db, task, orchidName);
+                }
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: buttonColor.withValues(alpha: 0.15),
+                foregroundColor: buttonColor,
+                minimumSize: const Size(0, 36),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                 ),
-                const SizedBox(width: 4),
-                if (isWater)
-                  _circularActionButton(
-                    Icons.water_drop,
-                    AppTheme.waterBlue,
-                    'Start soak',
-                    () => startSoakWorkflow(context, db, task, orchidName, _refresh),
-                  )
-                else
-                  _circularActionButton(
-                    Icons.check_circle,
-                    AppTheme.primary,
-                    'Mark complete',
-                    () => completeTaskWorkflow(context, db, task, orchidName),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(buttonIcon, size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    buttonLabel,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-              ],
+                ],
+              ),
             ),
         ],
       ),
     );
-  }
 
-  Widget _circularActionButton(
-    IconData icon,
-    Color color,
-    String tooltip,
-    VoidCallback onPressed,
-  ) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: color.withValues(alpha: 0.08),
-        shape: const CircleBorder(),
-        child: InkWell(
-          onTap: onPressed,
-          customBorder: const CircleBorder(),
-          child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: Icon(icon, color: color, size: 22),
-          ),
+    // Wrap in Dismissible for swipe-to-snooze (only when not soaking)
+    if (isSoaking) {
+      return rowContent;
+    }
+
+    return Dismissible(
+      key: ValueKey('snooze-${task.id}'),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) async {
+        await snoozeTaskWorkflow(context, db, task);
+        return false; // Don't actually dismiss — the stream will update
+      },
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        color: AppTheme.accent.withValues(alpha: 0.15),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Snooze',
+              style: TextStyle(
+                color: AppTheme.accent.withValues(alpha: 0.9),
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Icon(Icons.snooze, color: AppTheme.accent.withValues(alpha: 0.9), size: 20),
+          ],
         ),
       ),
+      child: rowContent,
     );
   }
 }
 
+// ── Date section type for gradient selection ──
+enum _DateSectionType { past, future }
+
 // ============================================================
-// Past care log tile — softer treatment, no Card wrapper
+// Past care log tile — compact, no explicit border
 // ============================================================
 
 class _PastLogTile extends StatelessWidget {
@@ -794,13 +962,8 @@ class _PastLogTile extends StatelessWidget {
     final displayName = AppTheme.getCareTypeDisplayName(careTypeName);
     final timeStr = DateFormat.jm().format(log.completedAt);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: AppTheme.divider.withValues(alpha: 0.4)),
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Row(
         children: [
           // Circular icon with check overlay badge
@@ -1096,7 +1259,7 @@ class _HealthCheckInSection extends StatelessWidget {
 }
 
 // ============================================================
-// Upcoming task tile — lighter treatment with blue left border
+// Upcoming task tile — compact, inside card container
 // ============================================================
 
 class _UpcomingTaskTile extends StatelessWidget {
@@ -1120,17 +1283,10 @@ class _UpcomingTaskTile extends StatelessWidget {
     final daysAway = dueDay.difference(today).inDays;
     final dueLabel = daysAway == 1 ? 'tomorrow' : 'in $daysAway days';
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-      margin: const EdgeInsets.only(bottom: 2),
-      decoration: const BoxDecoration(
-        border: Border(
-          left: BorderSide(color: Color(0x4D6BAFE5), width: 2),
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          const SizedBox(width: 8),
           // Circular icon with dashed-feel border
           Container(
             width: 36,
@@ -1158,20 +1314,27 @@ class _UpcomingTaskTile extends StatelessWidget {
               ],
             ),
           ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.schedule, size: 14, color: AppTheme.statusUpcoming.withValues(alpha: 0.6)),
-              const SizedBox(width: 4),
-              Text(
-                dueLabel,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.statusUpcoming,
-                  fontWeight: FontWeight.w500,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppTheme.statusUpcoming.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.schedule, size: 12, color: AppTheme.statusUpcoming.withValues(alpha: 0.7)),
+                const SizedBox(width: 4),
+                Text(
+                  dueLabel,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.statusUpcoming,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
