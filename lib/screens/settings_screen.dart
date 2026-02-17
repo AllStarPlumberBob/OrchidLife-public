@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../database/database.dart';
 import '../services/notification_service.dart';
+import '../services/export_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/orchid_sliver_app_bar.dart';
 import '../widgets/section_header.dart';
@@ -17,6 +18,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
   bool _isTogglingNotifications = false; // Prevent race condition
+  bool _isExporting = false;
   TimeOfDay _defaultNotifyTime = const TimeOfDay(hour: 9, minute: 0);
   int _defaultWaterInterval = 7;
   int _defaultFertilizeInterval = 30;
@@ -176,7 +178,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               ListTile(
                 title: const Text('Export Data'),
-                subtitle: const Text('Coming soon'),
+                subtitle: Text(_isExporting ? 'Preparing export...' : 'Export orchids, care history & photos as ZIP'),
                 leading: Container(
                   width: 40,
                   height: 40,
@@ -184,9 +186,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: AppTheme.statusUpcoming.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                   ),
-                  child: const Icon(Icons.download, color: AppTheme.statusUpcoming),
+                  child: _isExporting
+                      ? const Padding(
+                          padding: EdgeInsets.all(10),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.download, color: AppTheme.statusUpcoming),
                 ),
-                enabled: false,
+                enabled: !_isExporting,
+                onTap: () => _exportData(context, db),
               ),
 
               // About section
@@ -346,6 +354,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (result != null) {
       setState(() => _defaultSoakDuration = result);
       _saveSettings();
+    }
+  }
+
+  Future<void> _exportData(BuildContext context, AppDatabase db) async {
+    setState(() => _isExporting = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final exportService = ExportService(db);
+      await exportService.exportAndShare();
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Export failed: $e'), backgroundColor: Colors.red.shade700),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
     }
   }
 

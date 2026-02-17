@@ -379,6 +379,11 @@ class AppDatabase extends _$AppDatabase {
             ..limit(limit))
           .watch();
 
+  Future<List<CareLog>> getAllCareLogs() =>
+      (select(careLogs)..orderBy([(l) => OrderingTerm.desc(l.completedAt)])).get();
+
+  Future<List<CareTask>> getAllCareTasks() => select(careTasks).get();
+
   Future<int> insertCareLog(CareLogsCompanion log) =>
       into(careLogs).insert(log);
 
@@ -421,6 +426,9 @@ class AppDatabase extends _$AppDatabase {
             ..orderBy([(r) => OrderingTerm.desc(r.readingAt)]))
           .get();
 
+  Future<List<LightReading>> getAllLightReadings() =>
+      (select(lightReadings)..orderBy([(r) => OrderingTerm.desc(r.readingAt)])).get();
+
   Future<List<LightReading>> getAllReadings({int limit = 100}) =>
       (select(lightReadings)
             ..orderBy([(r) => OrderingTerm.desc(r.readingAt)])
@@ -433,6 +441,9 @@ class AppDatabase extends _$AppDatabase {
   // ============================================================
   // BLOOM LOG OPERATIONS
   // ============================================================
+
+  Future<List<BloomLog>> getAllBloomLogs() =>
+      (select(bloomLogs)..orderBy([(b) => OrderingTerm.desc(b.dateLogged)])).get();
 
   Stream<List<BloomLog>> watchBloomLogsForOrchid(int orchidId) =>
       (select(bloomLogs)
@@ -452,6 +463,9 @@ class AppDatabase extends _$AppDatabase {
   // ============================================================
   // PHOTO JOURNAL OPERATIONS
   // ============================================================
+
+  Future<List<PhotoJournalData>> getAllPhotoJournalEntries() =>
+      (select(photoJournal)..orderBy([(p) => OrderingTerm.desc(p.dateTaken)])).get();
 
   Stream<List<PhotoJournalData>> watchPhotoJournalForOrchid(int orchidId) =>
       (select(photoJournal)

@@ -28,6 +28,7 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
 
   // Step 1: Photo
   String? _photoPath;
+  Widget? _cachedPhotoWidget; // Cache decoded image to avoid repeated file I/O
   final _imagePicker = ImagePicker();
 
   // Step 2: Identify
@@ -54,11 +55,29 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
 
   static const _stepLabels = ['Photo', 'Identify', 'Details', 'Health', 'Care', 'Review'];
 
+  void _setPhotoPath(String? path) {
+    _photoPath = path;
+    _cachedPhotoWidget = path != null
+        ? Image.file(File(path), fit: BoxFit.cover, errorBuilder: (_, __, ___) => const SizedBox.shrink())
+        : null;
+  }
+
   @override
   void initState() {
     super.initState();
+    _nameController.addListener(_onNameChanged);
     _loadData();
   }
+
+  void _onNameChanged() {
+    // Only rebuild if the empty/non-empty state changed (affects Next button)
+    final hasText = _nameController.text.trim().isNotEmpty;
+    if (hasText != _nameHasText) {
+      setState(() => _nameHasText = hasText);
+    }
+  }
+
+  bool _nameHasText = false;
 
   Future<void> _loadData() async {
     final db = Provider.of<AppDatabase>(context, listen: false);
@@ -233,23 +252,19 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
               child: OrchidCard(
                 margin: EdgeInsets.zero,
                 padding: EdgeInsets.zero,
-                child: _photoPath != null
+                child: _cachedPhotoWidget != null
                     ? Stack(
                         fit: StackFit.expand,
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(AppTheme.radiusCard - 1),
-                            child: Image.file(
-                              File(_photoPath!),
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _photoPlaceholder(),
-                            ),
+                            child: _cachedPhotoWidget!,
                           ),
                           Positioned(
                             top: 8,
                             right: 8,
                             child: IconButton.filled(
-                              onPressed: () => setState(() => _photoPath = null),
+                              onPressed: () => setState(() => _setPhotoPath(null)),
                               icon: const Icon(Icons.close, size: 18),
                               style: IconButton.styleFrom(
                                 backgroundColor: Colors.black45,
@@ -329,7 +344,7 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
     final savedFile = await File(picked.path).copy(p.join(photosDir.path, fileName));
 
     if (!mounted) return;
-    setState(() => _photoPath = savedFile.path);
+    setState(() => _setPhotoPath(savedFile.path));
   }
 
   // ── Step 2: Identify ──
@@ -366,19 +381,19 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
               runSpacing: 8,
               children: [
                 _aiChipButton('Google', Icons.search, AppTheme.statusUpcoming, () async {
-                  final opened = await AIHandoffService.openGoogleLens(context);
+                  final opened = await AIHandoffService.openGoogleLens(context, imagePath: _photoPath);
                   if (!mounted || !opened) return;
-                  AIHandoffService.showFollowUp(context, 'Google Lens', message: 'Opening Google Lens... Upload your orchid photo to identify the species.');
+                  AIHandoffService.showFollowUp(context, 'Google Lens', message: 'Opening Google Lens with your photo...');
                 }),
                 _aiChipButton('Claude', Icons.psychology, AppTheme.fertilizerOrange, () async {
-                  final opened = await AIHandoffService.openClaude(context);
+                  final opened = await AIHandoffService.openClaude(context, imagePath: _photoPath, prompt: 'What orchid species is this?');
                   if (!mounted || !opened) return;
-                  AIHandoffService.showFollowUp(context, 'Claude', message: 'Opening Claude... Upload your orchid photo and ask "What orchid species is this?"');
+                  AIHandoffService.showFollowUp(context, 'Claude', message: 'Opening Claude with your photo...');
                 }),
                 _aiChipButton('Perplexity', Icons.travel_explore, AppTheme.brandPerplexity, () async {
-                  final opened = await AIHandoffService.openPerplexity(context);
+                  final opened = await AIHandoffService.openPerplexity(context, imagePath: _photoPath, prompt: 'What orchid species is this?');
                   if (!mounted || !opened) return;
-                  AIHandoffService.showFollowUp(context, 'Perplexity', message: 'Opening Perplexity... Upload your orchid photo and ask "What orchid species is this?"');
+                  AIHandoffService.showFollowUp(context, 'Perplexity', message: 'Opening Perplexity with your photo...');
                 }),
               ],
             ),
@@ -526,7 +541,6 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
             ),
             maxLength: 100,
             textCapitalization: TextCapitalization.words,
-            onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 12),
           TextFormField(
@@ -625,15 +639,13 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          if (_photoPath != null) ...[
+          if (_cachedPhotoWidget != null) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-              child: Image.file(
-                File(_photoPath!),
+              child: SizedBox(
                 height: 180,
                 width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                child: _cachedPhotoWidget!,
               ),
             ),
             const SizedBox(height: 20),
@@ -668,24 +680,24 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
                   runSpacing: 8,
                   children: [
                     _aiChipButton('Google', Icons.search, AppTheme.statusUpcoming, () async {
-                      final opened = await AIHandoffService.openGoogleLens(context);
+                      final opened = await AIHandoffService.openGoogleLens(context, imagePath: _photoPath);
                       if (!mounted || !opened) return;
                       AIHandoffService.showFollowUp(context, 'Google Lens',
-                          message: 'Opening Google Lens... Upload your orchid photo for a health check.');
+                          message: 'Opening Google Lens with your photo for a health check...');
                       setState(() => _healthCheckDone = true);
                     }),
                     _aiChipButton('Claude', Icons.psychology, AppTheme.fertilizerOrange, () async {
-                      final opened = await AIHandoffService.openClaude(context);
+                      final opened = await AIHandoffService.openClaude(context, imagePath: _photoPath, prompt: 'Is this orchid healthy? What issues do you see?');
                       if (!mounted || !opened) return;
                       AIHandoffService.showFollowUp(context, 'Claude',
-                          message: 'Opening Claude... Upload your photo and ask "Is my orchid healthy?"');
+                          message: 'Opening Claude with your photo for a health check...');
                       setState(() => _healthCheckDone = true);
                     }),
                     _aiChipButton('Perplexity', Icons.travel_explore, AppTheme.brandPerplexity, () async {
-                      final opened = await AIHandoffService.openPerplexity(context);
+                      final opened = await AIHandoffService.openPerplexity(context, imagePath: _photoPath, prompt: 'Is this orchid healthy? What issues do you see?');
                       if (!mounted || !opened) return;
                       AIHandoffService.showFollowUp(context, 'Perplexity',
-                          message: 'Opening Perplexity... Upload your photo for a health assessment.');
+                          message: 'Opening Perplexity with your photo for a health check...');
                       setState(() => _healthCheckDone = true);
                     }),
                   ],
@@ -984,12 +996,13 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
                     color: AppTheme.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                   ),
-                  child: _photoPath != null
+                  child: _cachedPhotoWidget != null
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                          child: Image.file(File(_photoPath!), fit: BoxFit.cover,
+                          child: SizedBox(
                             width: 72, height: 72,
-                            errorBuilder: (_, __, ___) => const Icon(Icons.local_florist, color: AppTheme.primary, size: 32)),
+                            child: _cachedPhotoWidget!,
+                          ),
                         )
                       : const Icon(Icons.local_florist, color: AppTheme.primary, size: 32),
                 ),
@@ -1160,6 +1173,7 @@ class _AddOrchidWizardScreenState extends State<AddOrchidWizardScreen> {
 
   @override
   void dispose() {
+    _nameController.removeListener(_onNameChanged);
     _pageController.dispose();
     _nameController.dispose();
     _varietyController.dispose();
