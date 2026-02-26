@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:image_picker/image_picker.dart';
 import 'dart:async';
-import 'dart:io' show File;
+import 'dart:io' show File, Platform;
 import '../services/ai_handoff_service.dart';
 import '../database/database.dart';
 import '../theme/app_theme.dart';
@@ -27,18 +27,19 @@ class ToolsScreen extends StatelessWidget {
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 // Primary tools — larger icons, gradient accent strip
-                _buildPrimaryToolCard(
-                  context,
-                  icon: Icons.light_mode,
-                  title: 'Light Meter',
-                  subtitle: 'Measure light levels for optimal orchid placement',
-                  color: AppTheme.statusNeedsCare,
-                  onTap: () => Navigator.push(
+                if (Platform.isAndroid)
+                  _buildPrimaryToolCard(
                     context,
-                    OrchidPageRoute(builder: (_) => const LuxMeterScreen()),
+                    icon: Icons.light_mode,
+                    title: 'Light Meter',
+                    subtitle: 'Measure light levels for optimal orchid placement',
+                    color: AppTheme.statusNeedsCare,
+                    onTap: () => Navigator.push(
+                      context,
+                      OrchidPageRoute(builder: (_) => const LuxMeterScreen()),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
+                if (Platform.isAndroid) const SizedBox(height: 4),
                 _buildPrimaryToolCard(
                   context,
                   icon: Icons.camera_alt,
@@ -48,6 +49,18 @@ class ToolsScreen extends StatelessWidget {
                   onTap: () => Navigator.push(
                     context,
                     OrchidPageRoute(builder: (_) => const AIHandoffScreen()),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                _buildPrimaryToolCard(
+                  context,
+                  icon: Icons.timer,
+                  title: 'Water Timer',
+                  subtitle: 'Set a soak timer for your orchids',
+                  color: AppTheme.waterBlue,
+                  onTap: () => Navigator.push(
+                    context,
+                    OrchidPageRoute(builder: (_) => const WaterTimerScreen()),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -143,8 +156,8 @@ class ToolsScreen extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             subtitle,
-                            style: const TextStyle(
-                              color: AppTheme.textSecondary,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                               fontSize: 13,
                               height: 1.3,
                             ),
@@ -199,15 +212,15 @@ class ToolsScreen extends StatelessWidget {
                 ),
                 Text(
                   subtitle,
-                  style: const TextStyle(
-                    color: AppTheme.textSecondary,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 12,
                   ),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, size: 20, color: AppTheme.textSecondary),
+          Icon(Icons.chevron_right, size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant),
         ],
       ),
     );
@@ -239,6 +252,15 @@ class _LuxMeterScreenState extends State<LuxMeterScreen> {
   }
 
   Future<void> _checkSensor() async {
+    if (!Platform.isAndroid) {
+      if (mounted) {
+        setState(() {
+          _hasSensor = false;
+          _sensorError = 'Light meter is only available on Android devices.';
+        });
+      }
+      return;
+    }
     final service = Provider.of<LightSensorService>(context, listen: false);
     try {
       final available = await service.hasSensor();
@@ -297,7 +319,7 @@ class _LuxMeterScreenState extends State<LuxMeterScreen> {
   }
 
   Color _getLightColor(double lux) {
-    if (lux < 500) return AppTheme.textSecondary;
+    if (lux < 500) return AppTheme.statusSkipped;
     if (lux < 1000) return AppTheme.statusUpcoming;
     if (lux < 5000) return AppTheme.statusCompleted;
     if (lux < 10000) return AppTheme.statusNeedsCare;
@@ -360,7 +382,7 @@ class _LuxMeterScreenState extends State<LuxMeterScreen> {
                                     Expanded(
                                       child: Text(
                                         _sensorError ?? 'This device does not have an ambient light sensor.',
-                                        style: const TextStyle(color: AppTheme.textPrimary),
+                                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                       ),
                                     ),
                                   ],
@@ -382,7 +404,7 @@ class _LuxMeterScreenState extends State<LuxMeterScreen> {
                                     Expanded(
                                       child: Text(
                                         _sensorError!,
-                                        style: const TextStyle(color: AppTheme.textPrimary),
+                                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                       ),
                                     ),
                                   ],
@@ -412,11 +434,11 @@ class _LuxMeterScreenState extends State<LuxMeterScreen> {
                                   color: _getLightColor(_currentLux),
                                 ),
                               ),
-                              const Text(
+                              Text(
                                 'lux',
                                 style: TextStyle(
                                   fontSize: 20,
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -487,7 +509,7 @@ class _LuxMeterScreenState extends State<LuxMeterScreen> {
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 8),
-                        _buildLightGuideRow('< 500 lux', 'Low', AppTheme.textSecondary),
+                        _buildLightGuideRow('< 500 lux', 'Low', AppTheme.statusSkipped),
                         _buildLightGuideRow('500-1000', 'Medium', AppTheme.statusUpcoming),
                         _buildLightGuideRow('1000-5000', 'Bright Indirect', AppTheme.statusCompleted),
                         _buildLightGuideRow('5000-10000', 'Bright', AppTheme.statusNeedsCare),
@@ -819,7 +841,7 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
                         _buildAIButton(
                           'Share...',
                           Icons.share,
-                          AppTheme.textSecondary,
+                          AppTheme.statusSkipped,
                           () => _shareToAny(),
                         ),
                     ],
@@ -838,9 +860,9 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
       onTap: _pickImage,
       child: Container(
         decoration: BoxDecoration(
-          color: AppTheme.surfaceVariant,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          border: Border.all(color: AppTheme.cardBorder),
+          border: Border.all(color: Theme.of(context).dividerColor),
         ),
         child: _selectedImage != null
             ? Stack(
@@ -872,11 +894,11 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.add_a_photo, size: 64, color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+                  Icon(Icons.add_a_photo, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'Tap to take or select a photo',
-                    style: TextStyle(color: AppTheme.textSecondary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -950,7 +972,7 @@ class _AIHandoffScreenState extends State<AIHandoffScreen> {
   Widget _buildAIButton(String label, IconData icon, Color color, VoidCallback onTap) {
     return OutlinedButton.icon(
       onPressed: _hasSelection ? onTap : null,
-      icon: Icon(icon, color: _hasSelection ? color : AppTheme.textSecondary),
+      icon: Icon(icon, color: _hasSelection ? color : Theme.of(context).colorScheme.onSurfaceVariant),
       label: Text(label),
     );
   }
@@ -1181,6 +1203,366 @@ class CareGuideScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ============================================================
+// WATER TIMER SCREEN
+// ============================================================
+
+class WaterTimerScreen extends StatefulWidget {
+  const WaterTimerScreen({super.key});
+
+  @override
+  State<WaterTimerScreen> createState() => _WaterTimerScreenState();
+}
+
+class _WaterTimerScreenState extends State<WaterTimerScreen> {
+  // Setup state
+  int _selectedMinutes = 15;
+  bool _isCustom = false;
+  final _customController = TextEditingController();
+
+  // Running state
+  Timer? _timer;
+  int? _totalSeconds;      // null = setup mode
+  int _remainingSeconds = 0;
+  bool _isComplete = false;
+
+  static const List<int> _presets = [10, 15, 20, 30, 45, 60];
+
+  double get _progress {
+    if (_totalSeconds == null || _totalSeconds == 0) return 0.0;
+    final elapsed = _totalSeconds! - _remainingSeconds;
+    return (elapsed / _totalSeconds!).clamp(0.0, 1.0);
+  }
+
+  void _startTimer() {
+    final minutes = _isCustom
+        ? (int.tryParse(_customController.text) ?? _selectedMinutes)
+        : _selectedMinutes;
+    if (minutes < 1 || minutes > 120) return;
+
+    setState(() {
+      _totalSeconds = minutes * 60;
+      _remainingSeconds = _totalSeconds!;
+      _isComplete = false;
+    });
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() {
+        _remainingSeconds--;
+        if (_remainingSeconds <= 0) {
+          _remainingSeconds = 0;
+          _isComplete = true;
+          _timer?.cancel();
+          _timer = null;
+        }
+      });
+    });
+  }
+
+  void _reset() {
+    _timer?.cancel();
+    _timer = null;
+    setState(() {
+      _totalSeconds = null;
+      _remainingSeconds = 0;
+      _isComplete = false;
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _customController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isRunning = _totalSeconds != null;
+
+    return Scaffold(
+      body: CustomScrollView(
+        slivers: [
+          const OrchidSliverAppBar(
+            title: 'Water Timer',
+            showBackButton: true,
+          ),
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                24, 24, 24,
+                24 + MediaQuery.of(context).padding.bottom,
+              ),
+              child: isRunning ? _buildRunningState(context) : _buildSetupState(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Setup State ──────────────────────────────────────────────
+
+  Widget _buildSetupState(BuildContext context) {
+    return Column(
+      children: [
+        // Info card
+        Card(
+          color: AppTheme.waterBlue.withValues(alpha: 0.08),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline, color: AppTheme.waterBlue),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Pick a soak duration, then start the timer.',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 32),
+
+        // Duration presets
+        Text(
+          'Soak Duration',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          alignment: WrapAlignment.center,
+          children: [
+            ..._presets.map((min) => ChoiceChip(
+                  label: Text(
+                    '$min min',
+                    style: TextStyle(
+                      color: (!_isCustom && _selectedMinutes == min)
+                          ? Colors.white
+                          : null,
+                    ),
+                  ),
+                  selected: !_isCustom && _selectedMinutes == min,
+                  selectedColor: AppTheme.waterBlue,
+                  onSelected: (selected) {
+                    if (selected) {
+                      setState(() {
+                        _selectedMinutes = min;
+                        _isCustom = false;
+                      });
+                    }
+                  },
+                )),
+            ChoiceChip(
+              label: Text(
+                'Custom',
+                style: TextStyle(
+                  color: _isCustom ? Colors.white : null,
+                ),
+              ),
+              selected: _isCustom,
+              selectedColor: AppTheme.waterBlue,
+              onSelected: (selected) {
+                setState(() => _isCustom = selected);
+              },
+            ),
+          ],
+        ),
+
+        // Custom input
+        if (_isCustom) ...[
+          const SizedBox(height: 16),
+          SizedBox(
+            width: 140,
+            child: TextField(
+              controller: _customController,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              decoration: const InputDecoration(
+                hintText: '1–120',
+                suffixText: 'min',
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+          ),
+        ],
+
+        const Spacer(),
+
+        // Start button
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: _canStart ? _startTimer : null,
+            icon: const Icon(Icons.play_arrow),
+            label: Text('Start $_displayMinutes min Timer'),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.waterBlue,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  bool get _canStart {
+    if (_isCustom) {
+      final val = int.tryParse(_customController.text);
+      return val != null && val >= 1 && val <= 120;
+    }
+    return true;
+  }
+
+  int get _displayMinutes {
+    if (_isCustom) {
+      return int.tryParse(_customController.text) ?? 0;
+    }
+    return _selectedMinutes;
+  }
+
+  // ── Running State ────────────────────────────────────────────
+
+  Widget _buildRunningState(BuildContext context) {
+    final minutes = _remainingSeconds ~/ 60;
+    final seconds = _remainingSeconds % 60;
+    final totalMinutes = (_totalSeconds! / 60).round();
+    final accentColor = _isComplete ? AppTheme.statusNeedsCare : AppTheme.waterBlue;
+
+    return Column(
+      children: [
+        const Spacer(),
+
+        // Countdown circle (180px, scaled up from SoakSessionCard's 56px)
+        Container(
+          width: 180,
+          height: 180,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: accentColor.withValues(alpha: 0.12),
+            border: Border.all(color: accentColor, width: 4),
+          ),
+          child: Center(
+            child: _isComplete
+                ? Icon(Icons.done, color: accentColor, size: 64)
+                : Text(
+                    '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+                    style: TextStyle(
+                      fontSize: 40,
+                      fontWeight: FontWeight.bold,
+                      color: accentColor,
+                    ),
+                  ),
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // Status text
+        Text(
+          _isComplete ? 'Ready to drain!' : 'Soaking...',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: _isComplete ? AppTheme.statusNeedsCare : Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '$totalMinutes minute soak',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // Progress bar
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: _progress,
+            backgroundColor: accentColor.withValues(alpha: 0.15),
+            valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+            minHeight: 6,
+          ),
+        ),
+
+        const Spacer(),
+
+        // Buttons
+        if (_isComplete)
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () {
+                _reset();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Soak complete! Time to drain.'),
+                    backgroundColor: AppTheme.statusNeedsCare,
+                  ),
+                );
+              },
+              icon: const Icon(Icons.water_drop_outlined),
+              label: const Text('Drain & Done'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.statusNeedsCare,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+            ),
+          )
+        else
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _reset,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: const Text('Cancel'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () {
+                    _reset();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Drained early — all done!'),
+                        backgroundColor: AppTheme.waterBlue,
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.water_drop_outlined),
+                  label: const Text('Drain Early'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppTheme.waterBlue,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
+              ),
+            ],
+          ),
+      ],
     );
   }
 }
