@@ -264,7 +264,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                       Divider(
                         height: 1,
                         indent: 56,
-                        color: AppTheme.divider.withValues(alpha: 0.4),
+                        color: Theme.of(context).dividerColor.withValues(alpha: 0.4),
                       ),
                     _PastLogTile(
                       log: logs[i],
@@ -324,7 +324,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                   Text(
                     'No tasks due today',
                     style: TextStyle(
-                      color: AppTheme.textSecondary.withValues(alpha: 0.7),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
                     ),
@@ -333,7 +333,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                   Text(
                     'Your orchids are all set!',
                     style: TextStyle(
-                      color: AppTheme.textSecondary.withValues(alpha: 0.5),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                       fontSize: 13,
                     ),
                   ),
@@ -372,7 +372,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.textSecondary.withValues(alpha: 0.6),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                           letterSpacing: 0.5,
                         ),
                       ),
@@ -399,7 +399,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                       Divider(
                         height: 1,
                         indent: 56,
-                        color: AppTheme.divider.withValues(alpha: 0.4),
+                        color: Theme.of(context).dividerColor.withValues(alpha: 0.4),
                       ),
                     _PastLogTile(
                       log: todayLogs[i],
@@ -446,7 +446,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                       Divider(
                         height: 1,
                         indent: 56,
-                        color: AppTheme.divider.withValues(alpha: 0.4),
+                        color: Theme.of(context).dividerColor.withValues(alpha: 0.4),
                       ),
                     _UpcomingTaskTile(
                       task: tasks[i],
@@ -690,7 +690,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                             Divider(
                               height: 1,
                               indent: 56,
-                              color: AppTheme.divider.withValues(alpha: 0.5),
+                              color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
                             ),
                           _buildTodayTaskRow(context, db, task, orchidName, activeTaskIds),
                         ],
@@ -724,37 +724,54 @@ class _AgendaScreenState extends State<AgendaScreen> {
     final isWater = task.careType == CareType.water;
     final isSoaking = activeTaskIds.contains(task.id);
 
-    // Button color: water=blue, overdue=red tint, default=green
-    final Color buttonColor;
-    final String buttonLabel;
-    final IconData buttonIcon;
-    if (isWater && !isSoaking) {
-      buttonColor = isOverdue ? AppTheme.statusOverdue : AppTheme.waterBlue;
-      buttonLabel = 'Soak';
-      buttonIcon = Icons.water_drop;
-    } else {
-      buttonColor = isOverdue ? AppTheme.statusOverdue : AppTheme.primary;
-      buttonLabel = 'Done';
-      buttonIcon = Icons.check;
-    }
+    // Accent color: water=blue, overdue=red, default=care type color
+    final Color accentColor = isSoaking
+        ? AppTheme.waterBlue
+        : isOverdue
+            ? AppTheme.statusOverdue
+            : isWater
+                ? AppTheme.waterBlue
+                : color;
 
     final rowContent = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          // 40x40 rounded square icon with gradient fill (normalized from 44)
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [color.withValues(alpha: 0.2), color.withValues(alpha: 0.08)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          // Tappable incomplete circle — clearly shows "not done"
+          GestureDetector(
+            onTap: isSoaking
+                ? null
+                : () {
+                    if (isWater) {
+                      startSoakWorkflow(context, db, task, orchidName, _refresh);
+                    } else {
+                      completeTaskWorkflow(context, db, task, orchidName);
+                    }
+                  },
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSoaking
+                    ? AppTheme.waterBlue.withValues(alpha: 0.15)
+                    : accentColor.withValues(alpha: 0.06),
+                border: Border.all(
+                  color: isSoaking
+                      ? AppTheme.waterBlue.withValues(alpha: 0.5)
+                      : accentColor.withValues(alpha: 0.35),
+                  width: isSoaking ? 2.5 : 2,
+                  strokeAlign: BorderSide.strokeAlignInside,
+                ),
               ),
-              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+              child: Icon(
+                isSoaking ? Icons.waves : icon,
+                color: isSoaking
+                    ? AppTheme.waterBlue
+                    : accentColor.withValues(alpha: 0.55),
+                size: 18,
+              ),
             ),
-            child: Icon(icon, color: color, size: 22),
           ),
           const SizedBox(width: 12),
           // Task info
@@ -767,7 +784,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: isOverdue && !isSoaking ? AppTheme.statusOverdue : AppTheme.textPrimary,
+                    color: isOverdue && !isSoaking ? AppTheme.statusOverdue : Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -785,13 +802,13 @@ class _AgendaScreenState extends State<AgendaScreen> {
                       fontSize: 13,
                       color: isOverdue
                           ? AppTheme.statusOverdue.withValues(alpha: 0.7)
-                          : AppTheme.textSecondary,
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
               ],
             ),
           ),
-          // Action button
+          // Right side: status chip or action label
           if (isSoaking)
             Chip(
               label: const Text('Soaking'),
@@ -800,36 +817,31 @@ class _AgendaScreenState extends State<AgendaScreen> {
               visualDensity: VisualDensity.compact,
             )
           else
-            FilledButton.tonal(
-              onPressed: () {
+            GestureDetector(
+              onTap: () {
                 if (isWater) {
                   startSoakWorkflow(context, db, task, orchidName, _refresh);
                 } else {
                   completeTaskWorkflow(context, db, task, orchidName);
                 }
               },
-              style: FilledButton.styleFrom(
-                backgroundColor: buttonColor.withValues(alpha: 0.15),
-                foregroundColor: buttonColor,
-                minimumSize: const Size(0, 48),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                shape: RoundedRectangleBorder(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: accentColor.withValues(alpha: 0.3),
+                    width: 1.5,
+                  ),
                   borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                 ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(buttonIcon, size: 16),
-                  const SizedBox(width: 8),
-                  Text(
-                    buttonLabel,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
+                child: Text(
+                  isWater ? 'Soak' : 'Mark Done',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: accentColor,
                   ),
-                ],
+                ),
               ),
             ),
         ],
@@ -938,7 +950,7 @@ class _PastLogTile extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.w500,
                     fontSize: 14,
-                    color: (log.skipped ? AppTheme.statusSkipped : AppTheme.textPrimary)
+                    color: (log.skipped ? AppTheme.statusSkipped : Theme.of(context).colorScheme.onSurface)
                         .withValues(alpha: 0.75),
                     fontStyle: log.skipped ? FontStyle.italic : null,
                   ),
@@ -947,7 +959,7 @@ class _PastLogTile extends StatelessWidget {
                   orchidName,
                   style: TextStyle(
                     fontSize: 12,
-                    color: AppTheme.textSecondary.withValues(alpha: 0.7),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                   ),
                 ),
               ],
@@ -960,7 +972,7 @@ class _PastLogTile extends StatelessWidget {
                 timeStr,
                 style: TextStyle(
                   fontSize: 11,
-                  color: AppTheme.textSecondary.withValues(alpha: 0.7),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                 ),
               ),
               if (log.skipped)
@@ -976,7 +988,7 @@ class _PastLogTile extends StatelessWidget {
                 Icon(
                   Icons.notes,
                   size: 14,
-                  color: AppTheme.textSecondary.withValues(alpha: 0.4),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
                 ),
             ],
           ),
@@ -1162,14 +1174,14 @@ class _HealthCheckInSection extends StatelessWidget {
                                   'How is ${orchid.name} doing?',
                                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                                 ),
-                                const Text(
+                                Text(
                                   'No recent care logged',
-                                  style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                                  style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
                                 ),
                               ],
                             ),
                           ),
-                          const Icon(Icons.chevron_right, size: 18, color: AppTheme.textSecondary),
+                          Icon(Icons.chevron_right, size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant),
                         ],
                       ),
                     ),
@@ -1237,7 +1249,7 @@ class _UpcomingTaskTile extends StatelessWidget {
                 ),
                 Text(
                   orchidName,
-                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
               ],
             ),
