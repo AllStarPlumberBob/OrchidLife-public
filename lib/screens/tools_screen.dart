@@ -448,10 +448,10 @@ class _LuxMeterScreenState extends State<LuxMeterScreen> {
                             child: Card(
                               color: AppTheme.primary.withValues(alpha: 0.08),
                               child: Padding(
-                                padding: const EdgeInsets.all(12),
+                                padding: const EdgeInsets.all(16),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.info_outline, color: AppTheme.primary, size: 20),
+                                    const Icon(Icons.info_outline, color: AppTheme.primary),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Text(
