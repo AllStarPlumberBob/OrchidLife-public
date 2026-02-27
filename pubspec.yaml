@@ -35,8 +35,9 @@ dependencies:
   # Images
   image_picker: ^1.0.0
 
-  # Lux Meter - ambient light sensor (Android)
+  # Lux Meter - ambient light sensor (Android) + camera (iOS)
   light_sensor: ^3.0.2
+  camera: ^0.11.0+2
 
   # AI Handoff (Photo + Voice)
   url_launcher: ^6.2.0
@@ -45,6 +46,9 @@ dependencies:
 
   # Data export
   archive: ^3.6.1
+
+  # App version info
+  package_info_plus: ^8.0.0
 
 dev_dependencies:
   flutter_test:
@@ -56,8 +60,20 @@ dev_dependencies:
   drift_dev: ^2.18.0
   build_runner: ^2.4.0
 
+  # App icon generation
+  flutter_launcher_icons: ^0.14.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  adaptive_icon_background: "#F7F5F0"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+  min_sdk_android: 21
+
 flutter:
   uses-material-design: true
 
   assets:
     - assets/orchid_types/
+    - assets/icon/

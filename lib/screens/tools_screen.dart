@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:image_picker/image_picker.dart';
+import 'package:camera/camera.dart';
 import 'dart:async';
 import 'dart:io' show File, Platform;
 import '../services/ai_handoff_service.dart';
@@ -27,19 +28,18 @@ class ToolsScreen extends StatelessWidget {
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 // Primary tools — larger icons, gradient accent strip
-                if (Platform.isAndroid)
-                  _buildPrimaryToolCard(
+                _buildPrimaryToolCard(
+                  context,
+                  icon: Icons.light_mode,
+                  title: 'Light Meter',
+                  subtitle: 'Measure light levels for optimal orchid placement',
+                  color: AppTheme.statusNeedsCare,
+                  onTap: () => Navigator.push(
                     context,
-                    icon: Icons.light_mode,
-                    title: 'Light Meter',
-                    subtitle: 'Measure light levels for optimal orchid placement',
-                    color: AppTheme.statusNeedsCare,
-                    onTap: () => Navigator.push(
-                      context,
-                      OrchidPageRoute(builder: (_) => const LuxMeterScreen()),
-                    ),
+                    OrchidPageRoute(builder: (_) => const LuxMeterScreen()),
                   ),
-                if (Platform.isAndroid) const SizedBox(height: 4),
+                ),
+                const SizedBox(height: 4),
                 _buildPrimaryToolCard(
                   context,
                   icon: Icons.camera_alt,
@@ -244,6 +244,7 @@ class _LuxMeterScreenState extends State<LuxMeterScreen> {
   bool _isReading = false;
   bool? _hasSensor;      // null = checking, true/false = result
   String? _sensorError;  // non-null if sensor unavailable or stream errored
+  final bool _isCameraMode = !Platform.isAndroid;
 
   @override
   void initState() {
@@ -252,16 +253,27 @@ class _LuxMeterScreenState extends State<LuxMeterScreen> {
   }
 
   Future<void> _checkSensor() async {
-    if (!Platform.isAndroid) {
+    final service = Provider.of<LightSensorService>(context, listen: false);
+
+    if (_isCameraMode) {
+      // iOS — initialize camera for lux estimation
+      final error = await service.initCamera();
       if (mounted) {
-        setState(() {
-          _hasSensor = false;
-          _sensorError = 'Light meter is only available on Android devices.';
-        });
+        if (error != null) {
+          setState(() {
+            _hasSensor = false;
+            _sensorError = error.contains('permission')
+                ? 'Camera permission denied. Please enable camera access in Settings to use the Light Meter.'
+                : error;
+          });
+        } else {
+          setState(() => _hasSensor = true);
+        }
       }
       return;
     }
-    final service = Provider.of<LightSensorService>(context, listen: false);
+
+    // Android — check hardware sensor
     try {
       final available = await service.hasSensor();
       if (mounted) setState(() => _hasSensor = available);
@@ -278,6 +290,10 @@ class _LuxMeterScreenState extends State<LuxMeterScreen> {
   @override
   void dispose() {
     _luxSubscription?.cancel();
+    if (_isCameraMode) {
+      final service = Provider.of<LightSensorService>(context, listen: false);
+      service.disposeCamera();
+    }
     super.dispose();
   }
 
@@ -287,6 +303,10 @@ class _LuxMeterScreenState extends State<LuxMeterScreen> {
       _isReading = true;
       _sensorError = null;
     });
+
+    if (_isCameraMode) {
+      service.startCameraStream();
+    }
 
     _luxSubscription = service.luxStream().listen(
       (double lux) {
@@ -307,6 +327,10 @@ class _LuxMeterScreenState extends State<LuxMeterScreen> {
 
   void _stopReading() {
     _luxSubscription?.cancel();
+    if (_isCameraMode) {
+      final service = Provider.of<LightSensorService>(context, listen: false);
+      service.stopCameraStream();
+    }
     setState(() => _isReading = false);
   }
 
@@ -412,6 +436,37 @@ class _LuxMeterScreenState extends State<LuxMeterScreen> {
                               ),
                             ),
                           ),
+                        // Camera preview (iOS only, when reading)
+                        if (_isCameraMode && _isReading) ...[
+                          _buildCameraPreview(context),
+                          const SizedBox(height: 16),
+                        ],
+                        // Estimated info banner (iOS only)
+                        if (_isCameraMode && _hasSensor == true)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: Card(
+                              color: AppTheme.primary.withValues(alpha: 0.08),
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.info_outline, color: AppTheme.primary, size: 20),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'Camera-based estimate. For best results, point the back camera at the light source.',
+                                        style: TextStyle(
+                                          color: Theme.of(context).colorScheme.onSurface,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
                         Container(
                           width: 200,
                           height: 200,
@@ -441,6 +496,14 @@ class _LuxMeterScreenState extends State<LuxMeterScreen> {
                                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                               ),
+                              if (_isCameraMode)
+                                Text(
+                                  '(estimated)',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
                             ],
                           ),
                         ),
@@ -526,6 +589,22 @@ class _LuxMeterScreenState extends State<LuxMeterScreen> {
     );
   }
 
+  Widget _buildCameraPreview(BuildContext context) {
+    final service = Provider.of<LightSensorService>(context, listen: false);
+    final controller = service.cameraController;
+    if (controller != null && controller.value.isInitialized) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        child: SizedBox(
+          width: 160,
+          height: 120,
+          child: CameraPreview(controller),
+        ),
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
   Widget _buildLightGuideRow(String range, String label, Color color) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -560,11 +639,14 @@ class _LuxMeterScreenState extends State<LuxMeterScreen> {
     );
 
     if (result != null) {
+      if (!context.mounted) return;
+      final service = Provider.of<LightSensorService>(context, listen: false);
       await db.insertLightReading(LightReadingsCompanion.insert(
         luxValue: _currentLux,
         readingAt: DateTime.now(),
         orchidId: Value(result.orchidId),
         locationName: Value(result.location),
+        notes: Value(service.isEstimated ? 'Camera estimate' : null),
       ));
 
       if (context.mounted) {
