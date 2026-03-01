@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -20,7 +21,15 @@ class NotificationService {
 
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initSettings = InitializationSettings(android: androidSettings);
+    const darwinSettings = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
+    const initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: darwinSettings,
+    );
     await _plugin.initialize(initSettings);
   }
 
@@ -40,6 +49,17 @@ class NotificationService {
   }
 
   Future<bool> requestPermissions() async {
+    if (Platform.isIOS) {
+      final iosPlugin = _plugin
+          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+      final granted = await iosPlugin?.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      return granted ?? false;
+    }
+
     // Android 13+ (API 33) requires POST_NOTIFICATIONS permission
     final notifStatus = await Permission.notification.request();
     if (!notifStatus.isGranted) return false;
@@ -80,6 +100,7 @@ class NotificationService {
       importance: Importance.high,
       priority: Priority.high,
     );
+    const darwinDetails = DarwinNotificationDetails();
 
     try {
       await _plugin.zonedSchedule(
@@ -87,7 +108,7 @@ class NotificationService {
         'Time to ${displayName.toLowerCase()}',
         '$orchidName needs $gerund',
         scheduledDate,
-        const NotificationDetails(android: androidDetails),
+        const NotificationDetails(android: androidDetails, iOS: darwinDetails),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
@@ -127,12 +148,24 @@ class NotificationService {
     final scheduledDate = tz.TZDateTime.from(drainAt, tz.local);
     if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) return;
 
-    const androidDetails = AndroidNotificationDetails(
-      'orchidlife_soak',
-      'Soak Reminders',
-      channelDescription: 'Reminders when orchid soaking is complete',
-      importance: Importance.high,
-      priority: Priority.high,
+    final androidDetails = AndroidNotificationDetails(
+      'orchidlife_soak_alarm',
+      'Soak Timer Alarm',
+      channelDescription: 'Alarm when orchid soaking is complete',
+      importance: Importance.max,
+      priority: Priority.max,
+      playSound: true,
+      enableVibration: true,
+      vibrationPattern: Int64List.fromList([0, 500, 250, 500, 250, 500, 250, 500]),
+      ongoing: true,
+      autoCancel: false,
+      category: AndroidNotificationCategory.alarm,
+      fullScreenIntent: true,
+      audioAttributesUsage: AudioAttributesUsage.alarm,
+    );
+    const darwinDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentSound: true,
     );
 
     // Use negative sessionId to avoid collision with positive task IDs
@@ -142,7 +175,7 @@ class NotificationService {
         'Time to drain!',
         body,
         scheduledDate,
-        const NotificationDetails(android: androidDetails),
+        NotificationDetails(android: androidDetails, iOS: darwinDetails),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,

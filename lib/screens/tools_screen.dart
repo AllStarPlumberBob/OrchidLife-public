@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import 'package:provider/provider.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:image_picker/image_picker.dart';
@@ -1311,6 +1312,7 @@ class _WaterTimerScreenState extends State<WaterTimerScreen> {
   int? _totalSeconds;      // null = setup mode
   int _remainingSeconds = 0;
   bool _isComplete = false;
+  bool _alarmPlaying = false;
 
   static const List<int> _presets = [10, 15, 20, 30, 45, 60];
 
@@ -1334,6 +1336,7 @@ class _WaterTimerScreenState extends State<WaterTimerScreen> {
 
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
+      bool shouldAlarm = false;
       setState(() {
         _remainingSeconds--;
         if (_remainingSeconds <= 0) {
@@ -1341,12 +1344,59 @@ class _WaterTimerScreenState extends State<WaterTimerScreen> {
           _isComplete = true;
           _timer?.cancel();
           _timer = null;
+          shouldAlarm = true;
         }
       });
+      if (shouldAlarm) _triggerAlarm();
     });
   }
 
+  void _triggerAlarm() {
+    _alarmPlaying = true;
+    FlutterRingtonePlayer().playAlarm(looping: true, volume: 1.0, asAlarm: true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _showAlarmDialog();
+    });
+  }
+
+  void _stopAlarm() {
+    if (_alarmPlaying) {
+      FlutterRingtonePlayer().stop();
+      _alarmPlaying = false;
+    }
+  }
+
+  void _showAlarmDialog() {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.alarm, size: 48, color: AppTheme.statusNeedsCare),
+        title: const Text('Timer Complete!'),
+        content: const Text('Time to drain your orchids.'),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () {
+                _stopAlarm();
+                Navigator.pop(dialogContext);
+              },
+              icon: const Icon(Icons.alarm_off),
+              label: const Text('Got it'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.statusNeedsCare,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _reset() {
+    _stopAlarm();
     _timer?.cancel();
     _timer = null;
     setState(() {
@@ -1359,6 +1409,10 @@ class _WaterTimerScreenState extends State<WaterTimerScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    if (_alarmPlaying) {
+      FlutterRingtonePlayer().stop();
+      _alarmPlaying = false;
+    }
     _customController.dispose();
     super.dispose();
   }

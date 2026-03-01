@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io' show File, Directory;
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -60,7 +61,7 @@ class _SoakSelectionSheetState extends State<SoakSelectionSheet> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: AppTheme.divider,
+                  color: Theme.of(context).dividerColor,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -70,9 +71,9 @@ class _SoakSelectionSheetState extends State<SoakSelectionSheet> {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               'Select orchids to soak together',
-              style: TextStyle(color: AppTheme.textSecondary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: 16),
             for (final duration in sortedDurations) ...[
@@ -147,10 +148,13 @@ class SoakSessionCard extends StatefulWidget {
 }
 
 class _SoakSessionCardState extends State<SoakSessionCard> {
+  static bool _alarmDialogShowing = false;
+
   Timer? _timer;
   Duration _remaining = Duration.zero;
   List<SoakSessionTaskWithOrchid> _sessionTasks = [];
   bool _isReadyToDrain = false;
+  bool _alarmPlaying = false;
 
   @override
   void initState() {
@@ -163,6 +167,10 @@ class _SoakSessionCardState extends State<SoakSessionCard> {
   @override
   void dispose() {
     _timer?.cancel();
+    if (_alarmPlaying) {
+      FlutterRingtonePlayer().stop();
+      _alarmPlaying = false;
+    }
     super.dispose();
   }
 
@@ -177,16 +185,22 @@ class _SoakSessionCardState extends State<SoakSessionCard> {
     final now = DateTime.now();
     final diff = endTime.difference(now);
 
-    if (mounted) {
-      setState(() {
-        _remaining = diff.isNegative ? Duration.zero : diff;
-        if (diff.isNegative && widget.session.status == SoakStatus.soaking && !_isReadyToDrain) {
-          _isReadyToDrain = true;
-          _markReadyToDrain();
-        } else if (widget.session.status == SoakStatus.readyToDrain) {
-          _isReadyToDrain = true;
-        }
-      });
+    if (!mounted) return;
+
+    bool shouldAlarm = false;
+    setState(() {
+      _remaining = diff.isNegative ? Duration.zero : diff;
+      if (diff.isNegative && widget.session.status == SoakStatus.soaking && !_isReadyToDrain) {
+        _isReadyToDrain = true;
+        shouldAlarm = true;
+      } else if (widget.session.status == SoakStatus.readyToDrain) {
+        _isReadyToDrain = true;
+      }
+    });
+
+    if (shouldAlarm) {
+      _markReadyToDrain();
+      _triggerAlarm();
     }
   }
 
@@ -198,8 +212,65 @@ class _SoakSessionCardState extends State<SoakSessionCard> {
     ));
   }
 
+  void _triggerAlarm() {
+    _alarmPlaying = true;
+    FlutterRingtonePlayer().playAlarm(looping: true, volume: 1.0, asAlarm: true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _showAlarmDialog();
+    });
+  }
+
+  void _stopAlarm() {
+    if (_alarmPlaying) {
+      FlutterRingtonePlayer().stop();
+      _alarmPlaying = false;
+    }
+  }
+
+  void _showAlarmDialog() {
+    // Prevent stacked dialogs from multiple sessions completing simultaneously
+    if (_alarmDialogShowing) return;
+    _alarmDialogShowing = true;
+
+    final orchidNames = _sessionTasks.map((st) => st.orchid.name).join(', ');
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.alarm, size: 48, color: AppTheme.statusNeedsCare),
+        title: const Text('Soak Complete!'),
+        content: Text(
+          orchidNames.isNotEmpty
+              ? '$orchidNames ${_sessionTasks.length == 1 ? 'is' : 'are'} ready to drain'
+              : 'Your orchids are ready to drain',
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () {
+                _stopAlarm();
+                // Cancel the ongoing system notification so it doesn't persist
+                Provider.of<NotificationService>(context, listen: false)
+                    .cancelDrainNotification(widget.session.id);
+                Navigator.pop(dialogContext);
+              },
+              icon: const Icon(Icons.alarm_off),
+              label: const Text('Got it'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.statusNeedsCare,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ).then((_) => _alarmDialogShowing = false);
+  }
+
   Future<void> _completeSoak() async {
     if (_sessionTasks.isEmpty) return;
+    _stopAlarm();
 
     final notif = Provider.of<NotificationService>(context, listen: false);
 
@@ -301,6 +372,7 @@ class _SoakSessionCardState extends State<SoakSessionCard> {
   }
 
   Future<void> _cancelSoak() async {
+    _stopAlarm();
     final notif = Provider.of<NotificationService>(context, listen: false);
     await widget.db.cancelSoakSession(widget.session.id);
     await notif.cancelDrainNotification(widget.session.id);
@@ -373,8 +445,8 @@ class _SoakSessionCardState extends State<SoakSessionCard> {
                         const SizedBox(height: 2),
                         Text(
                           orchidNames.isNotEmpty ? orchidNames : 'Loading...',
-                          style: const TextStyle(
-                            color: AppTheme.textSecondary,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                             fontSize: 13,
                           ),
                           maxLines: 2,
@@ -387,7 +459,7 @@ class _SoakSessionCardState extends State<SoakSessionCard> {
                     icon: const Icon(Icons.close),
                     tooltip: 'Cancel soak',
                     onPressed: _cancelSoak,
-                    color: AppTheme.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ],
               ),
