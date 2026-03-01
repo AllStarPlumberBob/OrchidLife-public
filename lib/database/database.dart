@@ -361,6 +361,35 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  /// Undo a task completion — only allowed for today's logs
+  Future<bool> undoTaskCompletion(int careLogId) async {
+    final log = await (select(careLogs)..where((l) => l.id.equals(careLogId))).getSingleOrNull();
+    if (log == null) return false;
+
+    // Safety check: only undo logs from today
+    final now = DateTime.now();
+    final logDay = DateTime(log.completedAt.year, log.completedAt.month, log.completedAt.day);
+    final today = DateTime(now.year, now.month, now.day);
+    if (logDay != today) return false;
+
+    await transaction(() async {
+      // Delete the care log entry
+      await (delete(careLogs)..where((l) => l.id.equals(careLogId))).go();
+
+      // Revert the care task's nextDue and lastCompleted
+      if (log.careTaskId != null) {
+        await (update(careTasks)..where((t) => t.id.equals(log.careTaskId!))).write(
+          CareTasksCompanion(
+            nextDue: Value(today),
+            lastCompleted: const Value(null),
+          ),
+        );
+      }
+    });
+
+    return true;
+  }
+
   // ============================================================
   // CARE LOG OPERATIONS
   // ============================================================

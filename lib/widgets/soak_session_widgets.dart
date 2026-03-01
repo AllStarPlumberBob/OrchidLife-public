@@ -505,9 +505,9 @@ Future<void> startSoakWorkflow(
   BuildContext context,
   AppDatabase db,
   CareTask tappedTask,
-  String tappedOrchidName,
-  VoidCallback onCompleted,
-) async {
+  String tappedOrchidName, [
+  VoidCallback? onCompleted,
+]) async {
   // Get all water tasks due today
   final allTasks = await db.getTasksDueToday();
   final waterTasks = allTasks.where((t) => t.careType == CareType.water).toList();
@@ -588,7 +588,7 @@ Future<void> startSoakWorkflow(
     );
   }
 
-  onCompleted();
+  onCompleted?.call();
 }
 
 /// Complete a care task with optional notes
@@ -596,8 +596,9 @@ Future<void> completeTaskWorkflow(
   BuildContext context,
   AppDatabase db,
   CareTask task,
-  String orchidName,
-) async {
+  String orchidName, {
+  VoidCallback? onCompleted,
+}) async {
   final careTypeName = AppTheme.getCareTypeDisplayName(task.careType.name);
   final notif = Provider.of<NotificationService>(context, listen: false);
 
@@ -641,6 +642,8 @@ Future<void> completeTaskWorkflow(
     await notif.cancelTaskNotification(task.id);
     final updated = await db.getCareTaskById(task.id);
     if (updated != null) await notif.scheduleTaskNotification(updated);
+
+    onCompleted?.call();
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

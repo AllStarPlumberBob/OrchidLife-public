@@ -32,6 +32,9 @@ dependencies:
   # Utilities
   intl: ^0.19.0
 
+  # Reactive streams
+  rxdart: ^0.28.0
+
   # Images
   image_picker: ^1.0.0
 

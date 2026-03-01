@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:rxdart/rxdart.dart';
 import '../database/database.dart';
 import '../theme/app_theme.dart';
 import '../widgets/orchid_sliver_app_bar.dart';
@@ -68,24 +69,20 @@ class _AgendaScreenState extends State<AgendaScreen> {
   }
 
   Stream<_AgendaData> _buildCombinedStream(AppDatabase db) {
-    // Combine all five streams into one using StreamZip-style manual composition
-    return db.watchActiveSoakSessions().asyncExpand((sessions) {
-      return db.watchAllOrchidsMap().asyncExpand((orchidMap) {
-        return db.watchTasksDueToday().asyncExpand((todayTasks) {
-          return db.watchRecentCareLogs(days: 14).asyncExpand((recentLogs) {
-            return db.watchUpcomingTasks(days: 14).map((upcomingTasks) {
-              return _AgendaData(
-                activeSessions: sessions,
-                orchidMap: orchidMap,
-                todayTasks: todayTasks,
-                recentLogs: recentLogs,
-                upcomingTasks: upcomingTasks,
-              );
-            });
-          });
-        });
-      });
-    });
+    return Rx.combineLatest5(
+      db.watchActiveSoakSessions(),
+      db.watchAllOrchidsMap(),
+      db.watchTasksDueToday(),
+      db.watchRecentCareLogs(days: 14),
+      db.watchUpcomingTasks(days: 14),
+      (sessions, orchidMap, todayTasks, recentLogs, upcomingTasks) => _AgendaData(
+        activeSessions: sessions,
+        orchidMap: orchidMap,
+        todayTasks: todayTasks,
+        recentLogs: recentLogs,
+        upcomingTasks: upcomingTasks,
+      ),
+    );
   }
 
   @override
@@ -404,6 +401,23 @@ class _AgendaScreenState extends State<AgendaScreen> {
                     _PastLogTile(
                       log: todayLogs[i],
                       orchidName: data.orchidMap[todayLogs[i].orchidId]?.name ?? 'Unknown',
+                      isToday: true,
+                      onUndo: () async {
+                        try {
+                          final success = await db.undoTaskCompletion(todayLogs[i].id);
+                          if (!success && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Could not undo — task may have already changed')),
+                            );
+                          }
+                        } catch (_) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Something went wrong while undoing')),
+                            );
+                          }
+                        }
+                      },
                     ),
                   ],
                 ],
@@ -452,6 +466,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                       task: tasks[i],
                       orchidName: data.orchidMap[tasks[i].orchidId]?.name ?? 'Unknown',
                       today: today,
+                      db: db,
                     ),
                   ],
                 ],
@@ -743,7 +758,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                 ? null
                 : () {
                     if (isWater) {
-                      startSoakWorkflow(context, db, task, orchidName, _refresh);
+                      startSoakWorkflow(context, db, task, orchidName);
                     } else {
                       completeTaskWorkflow(context, db, task, orchidName);
                     }
@@ -774,38 +789,45 @@ class _AgendaScreenState extends State<AgendaScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          // Task info
+          // Task info — tappable for navigation
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  displayName,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: isOverdue && !isSoaking ? AppTheme.statusOverdue : Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                if (isSoaking)
+            child: InkWell(
+              onTap: () => Navigator.push(
+                context,
+                OrchidPageRoute(builder: (_) => OrchidDetailScreen(orchidId: task.orchidId)),
+              ),
+              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    'Soaking...',
-                    style: TextStyle(fontSize: 13, color: AppTheme.waterBlue.withValues(alpha: 0.8)),
-                  )
-                else
-                  Text(
-                    isOverdue
-                        ? 'Overdue \u00b7 ${DateFormat.MMMd().format(task.nextDue)}'
-                        : 'Due today',
+                    displayName,
                     style: TextStyle(
-                      fontSize: 13,
-                      color: isOverdue
-                          ? AppTheme.statusOverdue.withValues(alpha: 0.7)
-                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: isOverdue && !isSoaking ? AppTheme.statusOverdue : Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
-              ],
+                  const SizedBox(height: 2),
+                  if (isSoaking)
+                    Text(
+                      'Soaking...',
+                      style: TextStyle(fontSize: 13, color: AppTheme.waterBlue.withValues(alpha: 0.8)),
+                    )
+                  else
+                    Text(
+                      isOverdue
+                          ? 'Overdue \u00b7 ${DateFormat.MMMd().format(task.nextDue)}'
+                          : 'Due today',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isOverdue
+                            ? AppTheme.statusOverdue.withValues(alpha: 0.7)
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
           // Right side: status chip or action label
@@ -820,7 +842,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
             GestureDetector(
               onTap: () {
                 if (isWater) {
-                  startSoakWorkflow(context, db, task, orchidName, _refresh);
+                  startSoakWorkflow(context, db, task, orchidName);
                 } else {
                   completeTaskWorkflow(context, db, task, orchidName);
                 }
@@ -892,8 +914,15 @@ class _AgendaScreenState extends State<AgendaScreen> {
 class _PastLogTile extends StatelessWidget {
   final CareLog log;
   final String orchidName;
+  final bool isToday;
+  final VoidCallback? onUndo;
 
-  const _PastLogTile({required this.log, required this.orchidName});
+  const _PastLogTile({
+    required this.log,
+    required this.orchidName,
+    this.isToday = false,
+    this.onUndo,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -903,96 +932,140 @@ class _PastLogTile extends StatelessWidget {
     final displayName = AppTheme.getCareTypeDisplayName(careTypeName);
     final timeStr = DateFormat.jm().format(log.completedAt);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
-        children: [
-          // 32px circular icon (normalized from 36)
-          Stack(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: color.withValues(alpha: 0.1),
-                ),
-                child: Icon(
-                  log.skipped ? Icons.skip_next : icon,
-                  color: color.withValues(alpha: 0.7),
-                  size: 16,
-                ),
-              ),
-              if (!log.skipped)
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: Container(
-                    width: 14,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppTheme.statusCompleted,
-                      border: Border.all(color: AppTheme.cardBackground, width: 1.5),
-                    ),
-                    child: const Icon(Icons.check, size: 8, color: Colors.white),
+    return InkWell(
+      onTap: () => Navigator.push(
+        context,
+        OrchidPageRoute(builder: (_) => OrchidDetailScreen(orchidId: log.orchidId)),
+      ),
+      onLongPress: isToday && onUndo != null
+          ? () => _showUndoSheet(context)
+          : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            // 32px circular icon (normalized from 36)
+            Stack(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: color.withValues(alpha: 0.1),
+                  ),
+                  child: Icon(
+                    log.skipped ? Icons.skip_next : icon,
+                    color: color.withValues(alpha: 0.7),
+                    size: 16,
                   ),
                 ),
-            ],
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+                if (!log.skipped)
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppTheme.statusCompleted,
+                        border: Border.all(color: AppTheme.cardBackground, width: 1.5),
+                      ),
+                      child: const Icon(Icons.check, size: 8, color: Colors.white),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    displayName,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                      color: (log.skipped ? AppTheme.statusSkipped : Theme.of(context).colorScheme.onSurface)
+                          .withValues(alpha: 0.75),
+                      fontStyle: log.skipped ? FontStyle.italic : null,
+                    ),
+                  ),
+                  Text(
+                    orchidName,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  displayName,
+                  timeStr,
                   style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
-                    color: (log.skipped ? AppTheme.statusSkipped : Theme.of(context).colorScheme.onSurface)
-                        .withValues(alpha: 0.75),
-                    fontStyle: log.skipped ? FontStyle.italic : null,
-                  ),
-                ),
-                Text(
-                  orchidName,
-                  style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                   ),
                 ),
+                if (log.skipped)
+                  Text(
+                    'Skipped',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppTheme.statusSkipped.withValues(alpha: 0.7),
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                if (log.notes != null && log.notes!.isNotEmpty)
+                  Icon(
+                    Icons.notes,
+                    size: 14,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                  ),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                timeStr,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showUndoSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).dividerColor,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              if (log.skipped)
-                Text(
-                  'Skipped',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: AppTheme.statusSkipped.withValues(alpha: 0.7),
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              if (log.notes != null && log.notes!.isNotEmpty)
-                Icon(
-                  Icons.notes,
-                  size: 14,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-                ),
-            ],
-          ),
-        ],
+            ),
+            ListTile(
+              leading: const Icon(Icons.undo),
+              title: const Text('Undo Completion'),
+              subtitle: const Text('Return this task to today\'s list'),
+              onTap: () {
+                Navigator.pop(context);
+                onUndo?.call();
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
@@ -1206,76 +1279,116 @@ class _UpcomingTaskTile extends StatelessWidget {
   final CareTask task;
   final String orchidName;
   final DateTime today;
+  final AppDatabase db;
 
   const _UpcomingTaskTile({
     required this.task,
     required this.orchidName,
     required this.today,
+    required this.db,
   });
 
   @override
   Widget build(BuildContext context) {
     final careTypeName = task.careType.name;
-    const color = AppTheme.statusUpcoming;
+    final careColor = AppTheme.getCareTypeColor(careTypeName);
     final icon = AppTheme.getCareTypeIcon(careTypeName);
     final displayName = task.customLabel ?? AppTheme.getCareTypeDisplayName(careTypeName);
     final dueDay = DateTime(task.nextDue.year, task.nextDue.month, task.nextDue.day);
     final daysAway = dueDay.difference(today).inDays;
     final dueLabel = daysAway == 1 ? 'tomorrow' : 'in $daysAway days';
+    final isWater = task.careType == CareType.water;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          // 32px circular icon (normalized from 36)
+          // 32px circular icon
           Container(
             width: 32,
             height: 32,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: color.withValues(alpha: 0.08),
-              border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
+              color: careColor.withValues(alpha: 0.08),
+              border: Border.all(color: careColor.withValues(alpha: 0.3), width: 1),
             ),
-            child: Icon(icon, color: color.withValues(alpha: 0.7), size: 16),
+            child: Icon(icon, color: careColor.withValues(alpha: 0.7), size: 16),
           ),
           const SizedBox(width: 12),
+          // Task info — tappable for navigation
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  displayName,
-                  style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
-                ),
-                Text(
-                  orchidName,
-                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
-                ),
-              ],
+            child: InkWell(
+              onTap: () => Navigator.push(
+                context,
+                OrchidPageRoute(builder: (_) => OrchidDetailScreen(orchidId: task.orchidId)),
+              ),
+              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    displayName,
+                    style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+                  ),
+                  Text(
+                    orchidName,
+                    style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppTheme.statusUpcoming.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppTheme.statusUpcoming.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.schedule, size: 12, color: AppTheme.statusUpcoming.withValues(alpha: 0.7)),
+                  const SizedBox(width: 4),
+                  Text(
+                    dueLabel,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.statusUpcoming,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.schedule, size: 12, color: AppTheme.statusUpcoming.withValues(alpha: 0.7)),
-                const SizedBox(width: 4),
-                Text(
-                  dueLabel,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.statusUpcoming,
-                    fontWeight: FontWeight.w500,
+            const SizedBox(width: 8),
+            // Action button to complete early
+            GestureDetector(
+              onTap: () {
+                if (isWater) {
+                  startSoakWorkflow(context, db, task, orchidName);
+                } else {
+                  completeTaskWorkflow(context, db, task, orchidName);
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: careColor.withValues(alpha: 0.3),
+                    width: 1.5,
+                  ),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                ),
+                child: Text(
+                  isWater ? 'Soak' : 'Done',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: careColor,
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
         ],
       ),
     );
