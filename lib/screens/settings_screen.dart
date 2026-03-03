@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../database/database.dart';
 import '../services/notification_service.dart';
 import '../services/export_service.dart';
@@ -19,6 +21,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
   bool _isTogglingNotifications = false; // Prevent race condition
   bool _isExporting = false;
+  String _appVersion = '';
   TimeOfDay _defaultNotifyTime = const TimeOfDay(hour: 9, minute: 0);
   int _defaultWaterInterval = 7;
   int _defaultFertilizeInterval = 30;
@@ -28,6 +31,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _loadSettings();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() => _appVersion = 'Version ${info.version} (${info.buildNumber})');
+    }
   }
 
   Future<void> _loadSettings() async {
@@ -201,7 +212,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildSectionHeader('About', icon: Icons.info_outline),
               ListTile(
                 title: const Text('OrchidLife'),
-                subtitle: const Text('Version 1.0.0'),
+                subtitle: Text(_appVersion.isNotEmpty ? _appVersion : 'Loading...'),
                 leading: Container(
                   width: 40,
                   height: 40,
@@ -215,16 +226,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ListTile(
                 title: const Text('Privacy Policy'),
                 trailing: const Icon(Icons.open_in_new),
-                onTap: () {
-                  // TODO: Open privacy policy
-                },
+                onTap: () => launchUrl(
+                  Uri.parse('https://orchidlife.app/privacy'),
+                  mode: LaunchMode.externalApplication,
+                ),
               ),
               ListTile(
                 title: const Text('Send Feedback'),
                 trailing: const Icon(Icons.email),
-                onTap: () {
-                  // TODO: Open email
-                },
+                onTap: () => launchUrl(
+                  Uri.parse('mailto:tr.eigengrau@gmail.com?subject=OrchidLife Feedback'),
+                ),
               ),
               SizedBox(height: 32 + MediaQuery.of(context).padding.bottom),
             ]),
