@@ -147,7 +147,8 @@ class SoakSessionCard extends StatefulWidget {
   State<SoakSessionCard> createState() => _SoakSessionCardState();
 }
 
-class _SoakSessionCardState extends State<SoakSessionCard> {
+class _SoakSessionCardState extends State<SoakSessionCard>
+    with WidgetsBindingObserver {
   static bool _alarmDialogShowing = false;
 
   Timer? _timer;
@@ -155,23 +156,52 @@ class _SoakSessionCardState extends State<SoakSessionCard> {
   List<SoakSessionTaskWithOrchid> _sessionTasks = [];
   bool _isReadyToDrain = false;
   bool _alarmPlaying = false;
+  bool _alarmAcknowledged = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadSessionTasks();
     _updateRemaining();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateRemaining());
+
+    // If the session is already readyToDrain on build (cold restart case),
+    // trigger the alarm after the first frame
+    if (widget.session.status == SoakStatus.readyToDrain) {
+      _isReadyToDrain = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_alarmAcknowledged && !_alarmDialogShowing) {
+          _triggerAlarm();
+        }
+      });
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     if (_alarmPlaying) {
       FlutterRingtonePlayer().stop();
       _alarmPlaying = false;
     }
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final wasReady = _isReadyToDrain;
+      // Re-check remaining time — may have elapsed while backgrounded.
+      // If the transition happens now, _updateRemaining will trigger the alarm.
+      _updateRemaining();
+      // If it was already ready before resume (no transition in _updateRemaining),
+      // re-trigger alarm if not yet acknowledged
+      if (wasReady && _isReadyToDrain && !_alarmAcknowledged && !_alarmDialogShowing && !_alarmPlaying) {
+        _triggerAlarm();
+      }
+    }
   }
 
   void _loadSessionTasks() async {
@@ -249,6 +279,7 @@ class _SoakSessionCardState extends State<SoakSessionCard> {
             width: double.infinity,
             child: FilledButton.icon(
               onPressed: () {
+                _alarmAcknowledged = true;
                 _stopAlarm();
                 // Cancel the ongoing system notification so it doesn't persist
                 Provider.of<NotificationService>(context, listen: false)

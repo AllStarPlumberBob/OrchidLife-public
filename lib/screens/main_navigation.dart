@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
+import '../database/database.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/floating_bottom_nav.dart';
@@ -16,8 +18,10 @@ class MainNavigation extends StatefulWidget {
   State<MainNavigation> createState() => _MainNavigationState();
 }
 
-class _MainNavigationState extends State<MainNavigation> {
+class _MainNavigationState extends State<MainNavigation>
+    with WidgetsBindingObserver {
   int _currentIndex = 0;
+  StreamSubscription<String>? _notificationTapSub;
 
   final List<Widget> _screens = const [
     AgendaScreen(),
@@ -29,10 +33,50 @@ class _MainNavigationState extends State<MainNavigation> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
+    // Listen for notification taps (drain payloads → switch to agenda)
+    _notificationTapSub = NotificationService.onNotificationTap.listen((payload) {
+      if (payload.startsWith('drain:') && mounted) {
+        setState(() => _currentIndex = 0);
+      }
+    });
+
+    // Check for cold-start launch payload (buffered because broadcast stream
+    // has no subscribers during main() when init() runs)
+    final launchPayload = NotificationService.consumeLaunchPayload();
+    if (launchPayload != null && launchPayload.startsWith('drain:')) {
+      _currentIndex = 0;
+    }
+
     // Request permissions and schedule notifications after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _requestPermissionsAndSchedule();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _notificationTapSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkForReadyToDrainSessions();
+    }
+  }
+
+  /// On app resume, check if any soak sessions are readyToDrain and switch to agenda
+  Future<void> _checkForReadyToDrainSessions() async {
+    final db = Provider.of<AppDatabase>(context, listen: false);
+    final sessions = await db.getActiveSoakSessions();
+    final hasReady = sessions.any((s) => s.status == SoakStatus.readyToDrain);
+    if (hasReady && mounted) {
+      setState(() => _currentIndex = 0);
+    }
   }
 
   Future<void> _requestPermissionsAndSchedule() async {

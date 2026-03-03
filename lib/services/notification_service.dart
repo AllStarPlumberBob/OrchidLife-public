@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -12,6 +13,22 @@ class NotificationService {
   final AppDatabase _db;
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
+
+  /// Broadcast stream that emits payloads when a notification is tapped.
+  static final StreamController<String> _notificationTapController =
+      StreamController<String>.broadcast();
+
+  /// Cold-start payload stored for late subscribers (broadcast streams have no buffer).
+  static String? _pendingLaunchPayload;
+
+  static Stream<String> get onNotificationTap => _notificationTapController.stream;
+
+  /// Consume the cold-start launch payload, if any. Returns null after first call.
+  static String? consumeLaunchPayload() {
+    final payload = _pendingLaunchPayload;
+    _pendingLaunchPayload = null;
+    return payload;
+  }
 
   NotificationService(this._db);
 
@@ -30,7 +47,24 @@ class NotificationService {
       android: androidSettings,
       iOS: darwinSettings,
     );
-    await _plugin.initialize(initSettings);
+    await _plugin.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: _onNotificationTap,
+    );
+
+    // Store cold-start payload for later consumption by MainNavigation
+    final launchDetails = await _plugin.getNotificationAppLaunchDetails();
+    if (launchDetails != null &&
+        launchDetails.didNotificationLaunchApp &&
+        launchDetails.notificationResponse?.payload != null) {
+      _pendingLaunchPayload = launchDetails.notificationResponse!.payload!;
+    }
+  }
+
+  static void _onNotificationTap(NotificationResponse response) {
+    if (response.payload != null && response.payload!.isNotEmpty) {
+      _notificationTapController.add(response.payload!);
+    }
   }
 
   /// Determine the device's local timezone and set it for the tz library.
@@ -179,6 +213,7 @@ class NotificationService {
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'drain:$sessionId',
       );
     } catch (e) {
       debugPrint('Failed to schedule drain notification for session $sessionId: $e');

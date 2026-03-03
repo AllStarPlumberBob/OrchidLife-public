@@ -587,6 +587,14 @@ class AppDatabase extends _$AppDatabase {
         .watch();
   }
 
+  /// Get active soak sessions (soaking or readyToDrain) - one-shot query
+  Future<List<SoakSession>> getActiveSoakSessions() {
+    return (select(soakSessions)
+          ..where((s) => s.status.isIn(['soaking', 'readyToDrain']))
+          ..orderBy([(s) => OrderingTerm.asc(s.startedAt)]))
+        .get();
+  }
+
   /// Get tasks + orchid info for a soak session
   Future<List<SoakSessionTaskWithOrchid>> getTasksForSoakSession(int sessionId) async {
     final query = select(soakSessionTasks).join([
