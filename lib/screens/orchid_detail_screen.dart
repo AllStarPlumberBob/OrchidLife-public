@@ -190,7 +190,7 @@ class OrchidDetailScreen extends StatelessWidget {
                         orchid.variety!,
                         style: const TextStyle(
                           fontSize: 16,
-                          color: AppTheme.textSecondary,
+                          color: AppTheme.statusSkipped,
                         ),
                       ),
                     ],
@@ -198,7 +198,7 @@ class OrchidDetailScreen extends StatelessWidget {
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          const Icon(Icons.location_on, size: 16, color: AppTheme.textSecondary),
+                          const Icon(Icons.location_on, size: 16, color: AppTheme.statusSkipped),
                           const SizedBox(width: 4),
                           Text(orchid.location!),
                         ],
@@ -208,7 +208,7 @@ class OrchidDetailScreen extends StatelessWidget {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Icon(Icons.calendar_today, size: 16, color: AppTheme.textSecondary),
+                          const Icon(Icons.calendar_today, size: 16, color: AppTheme.statusSkipped),
                           const SizedBox(width: 4),
                           Text('Since ${DateFormat.yMMMd().format(orchid.dateAcquired!)}'),
                         ],
@@ -285,11 +285,11 @@ class OrchidDetailScreen extends StatelessWidget {
               final logs = snapshot.data ?? [];
 
               if (logs.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.all(16),
+                return Padding(
+                  padding: const EdgeInsets.all(16),
                   child: Text(
                     'No bloom history yet',
-                    style: TextStyle(color: AppTheme.textSecondary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 );
               }
@@ -311,7 +311,7 @@ class OrchidDetailScreen extends StatelessWidget {
                     subtitle: log.notes != null ? Text(log.notes!) : null,
                     trailing: Text(
                       DateFormat.MMMd().format(log.dateLogged),
-                      style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                      style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
                   );
                 }).toList(),
@@ -345,11 +345,11 @@ class OrchidDetailScreen extends StatelessWidget {
               final tasks = snapshot.data ?? [];
 
               if (tasks.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.all(16),
+                return Padding(
+                  padding: const EdgeInsets.all(16),
                   child: Text(
                     'No care tasks set up yet',
-                    style: TextStyle(color: AppTheme.textSecondary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 );
               }
@@ -381,13 +381,13 @@ class OrchidDetailScreen extends StatelessWidget {
         ),
         child: Icon(
           icon,
-          color: task.enabled ? color : AppTheme.textSecondary,
+          color: task.enabled ? color : Theme.of(context).colorScheme.onSurfaceVariant,
         ),
       ),
       title: Text(
         displayName,
         style: TextStyle(
-          color: task.enabled ? null : AppTheme.textSecondary,
+          color: task.enabled ? null : Theme.of(context).colorScheme.onSurfaceVariant,
           decoration: task.enabled ? null : TextDecoration.lineThrough,
         ),
       ),
@@ -428,9 +428,9 @@ class OrchidDetailScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionHeader(
+          SectionHeader(
             icon: Icons.history,
-            color: AppTheme.textSecondary,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
             title: 'Care History',
           ),
           const SizedBox(height: 8),
@@ -440,11 +440,11 @@ class OrchidDetailScreen extends StatelessWidget {
               final logs = snapshot.data ?? [];
 
               if (logs.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.all(16),
+                return Padding(
+                  padding: const EdgeInsets.all(16),
                   child: Text(
                     'No care history yet',
-                    style: TextStyle(color: AppTheme.textSecondary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 );
               }
@@ -471,7 +471,7 @@ class OrchidDetailScreen extends StatelessWidget {
       title: Text(
         log.skipped ? '$displayName (skipped)' : displayName,
         style: TextStyle(
-          color: log.skipped ? AppTheme.textSecondary : null,
+          color: log.skipped ? AppTheme.statusSkipped : null,
           fontStyle: log.skipped ? FontStyle.italic : null,
         ),
       ),
@@ -645,14 +645,14 @@ class _LightExposureCard extends StatelessWidget {
                       ),
                       Text(
                         'Last reading: ${DateFormat.yMMMd().format(reading.readingAt)}',
-                        style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                        style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
                       ),
                     ],
                     if (species != null && species.idealLuxMin != null && species.idealLuxMax != null) ...[
                       const SizedBox(height: 8),
                       Text(
                         'Ideal range: ${species.idealLuxMin}-${species.idealLuxMax} lux',
-                        style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                        style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
                       ),
                     ],
                   ],
@@ -943,7 +943,7 @@ class _CareInsightsCard extends StatelessWidget {
                               ),
                               Text(
                                 insight.message,
-                                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                                style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
                               ),
                             ],
                           ),

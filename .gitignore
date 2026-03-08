@@ -47,3 +47,14 @@ app.*.map.json
 # Platform build outputs
 /ios/Pods/
 /ios/.symlinks/
+
+# Android release signing
+android/key.properties
+*.jks
+*.keystore
+
+# Android local properties
+android/local.properties
+
+# Claude Code
+.claude/

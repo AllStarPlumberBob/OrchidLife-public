@@ -47,7 +47,7 @@ class BloomStageWidget extends StatelessWidget {
   static Color stageColor(BloomStage stage) {
     switch (stage) {
       case BloomStage.dormant:
-        return AppTheme.textSecondary;
+        return AppTheme.statusSkipped;
       case BloomStage.spikeEmerging:
         return AppTheme.statusCompleted;
       case BloomStage.budding:
@@ -74,7 +74,7 @@ class BloomStageWidget extends StatelessWidget {
               height: 2,
               color: isActive
                   ? stageColor(_stages[stageIndex])
-                  : AppTheme.divider,
+                  : Theme.of(context).dividerColor,
             ),
           );
         }
@@ -85,7 +85,7 @@ class BloomStageWidget extends StatelessWidget {
         final isPast = stageIndex < activeIndex;
         final color = (isActive || isPast)
             ? stageColor(stage)
-            : AppTheme.divider;
+            : Theme.of(context).dividerColor;
 
         return GestureDetector(
           onTap: onStageChanged != null ? () => onStageChanged!(stage) : null,
@@ -119,7 +119,7 @@ class BloomStageWidget extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                    color: isActive ? color : AppTheme.textSecondary,
+                    color: isActive ? color : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],

@@ -64,25 +64,43 @@ class AIHandoffService {
         if (await _shareImageToPackage(
           filePath: imagePath,
           packageName: 'com.google.ar.lens',
-        )) return true;
+        )) {
+          return true;
+        }
         // Fallback: share to Google app (which includes Lens)
         if (await _shareImageToPackage(
           filePath: imagePath,
           packageName: 'com.google.android.googlequicksearchbox',
-        )) return true;
+        )) {
+          return true;
+        }
       }
 
       // No image — just launch the app
       if (await _launchActivity(
         'com.google.ar.lens',
         'com.google.vr.apps.ornament.app.lens.LensLauncherActivity',
-      )) return true;
+      )) {
+        return true;
+      }
 
       if (await _launchActivity(
         'com.google.android.googlequicksearchbox',
         'com.google.android.apps.lens.MainActivity',
-      )) return true;
+      )) {
+        return true;
+      }
     }
+
+    // iOS: try Google Lens URL scheme
+    if (Platform.isIOS) {
+      final schemeUrl = Uri.parse('googlelens://');
+      if (await canLaunchUrl(schemeUrl)) {
+        await launchUrl(schemeUrl);
+        return true;
+      }
+    }
+
     // Final fallback: Google Images search
     final url = Uri.parse('https://images.google.com');
     if (await canLaunchUrl(url)) {
@@ -95,7 +113,7 @@ class AIHandoffService {
     return false;
   }
 
-  /// Open Claude (native Android app, then web fallback).
+  /// Open Claude (native Android app, iOS URL scheme, then web fallback).
   /// If [imagePath] and [prompt] are provided, shares the image + prompt directly.
   static Future<bool> openClaude(BuildContext context, {String? imagePath, String? prompt}) async {
     if (Platform.isAndroid && imagePath != null) {
@@ -103,14 +121,27 @@ class AIHandoffService {
         filePath: imagePath,
         packageName: 'com.anthropic.claude',
         text: prompt ?? '',
-      )) return true;
+      )) {
+        return true;
+      }
     }
 
     // No image — just launch the app
     if (await _launchActivity(
       'com.anthropic.claude',
       'com.anthropic.claude.mainactivity.MainActivity',
-    )) return true;
+    )) {
+      return true;
+    }
+
+    // iOS: try URL scheme for native app
+    if (Platform.isIOS) {
+      final schemeUrl = Uri.parse('claude://');
+      if (await canLaunchUrl(schemeUrl)) {
+        await launchUrl(schemeUrl);
+        return true;
+      }
+    }
 
     // Fallback to web
     final url = Uri.parse('https://claude.ai');
@@ -124,7 +155,7 @@ class AIHandoffService {
     return false;
   }
 
-  /// Open Perplexity (native Android app, then web fallback).
+  /// Open Perplexity (native Android app, iOS URL scheme, then web fallback).
   /// If [imagePath] and [prompt] are provided, shares the image + prompt directly.
   static Future<bool> openPerplexity(BuildContext context, {String? imagePath, String? prompt}) async {
     if (Platform.isAndroid && imagePath != null) {
@@ -132,14 +163,27 @@ class AIHandoffService {
         filePath: imagePath,
         packageName: 'ai.perplexity.app.android',
         text: prompt ?? '',
-      )) return true;
+      )) {
+        return true;
+      }
     }
 
     // No image — just launch the app
     if (await _launchActivity(
       'ai.perplexity.app.android',
       'ai.perplexity.app.android.ui.main.MainActivity',
-    )) return true;
+    )) {
+      return true;
+    }
+
+    // iOS: try URL scheme for native app
+    if (Platform.isIOS) {
+      final schemeUrl = Uri.parse('perplexity://');
+      if (await canLaunchUrl(schemeUrl)) {
+        await launchUrl(schemeUrl);
+        return true;
+      }
+    }
 
     // Fallback to web
     final url = Uri.parse('https://www.perplexity.ai');

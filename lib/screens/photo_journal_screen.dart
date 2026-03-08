@@ -61,11 +61,11 @@ class _PhotoJournalScreenState extends State<PhotoJournalScreen> {
               ),
               // Photo grid
               if (photos.isEmpty)
-                const SliverFillRemaining(
+                SliverFillRemaining(
                   child: Center(
                     child: Text(
                       'No photos yet',
-                      style: TextStyle(color: AppTheme.textSecondary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
                   ),
                 )
@@ -124,8 +124,8 @@ class _PhotoJournalScreenState extends State<PhotoJournalScreen> {
               child: Image.file(
                 File(photo.photoPath),
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  color: AppTheme.surfaceVariant,
+                errorBuilder: (context, _, __) => Container(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   child: const Icon(Icons.broken_image, size: 64),
                 ),
               ),
@@ -155,9 +155,9 @@ class _PhotoJournalScreenState extends State<PhotoJournalScreen> {
                       const Spacer(),
                       Text(
                         DateFormat.yMMMd().format(photo.dateTaken),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -261,8 +261,8 @@ class _PhotoGridItem extends StatelessWidget {
               child: Image.file(
                 File(photo.photoPath),
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  color: AppTheme.surfaceVariant,
+                errorBuilder: (context, _, __) => Container(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   child: const Icon(Icons.broken_image),
                 ),
               ),
@@ -294,9 +294,9 @@ class _PhotoGridItem extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     DateFormat.MMMd().format(photo.dateTaken),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   if (photo.note != null)

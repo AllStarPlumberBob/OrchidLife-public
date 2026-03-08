@@ -213,8 +213,8 @@ class _OrchidListScreenState extends State<OrchidListScreen> {
                   const SizedBox(height: 4),
                   Text(
                     orchid.variety!,
-                    style: const TextStyle(
-                      color: AppTheme.textSecondary,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -222,17 +222,17 @@ class _OrchidListScreenState extends State<OrchidListScreen> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.location_on,
                         size: 14,
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         orchid.location!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -270,9 +270,9 @@ class _OrchidListScreenState extends State<OrchidListScreen> {
               ),
             )
           else
-            const Icon(
+            Icon(
               Icons.chevron_right,
-              color: AppTheme.textSecondary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
         ],
       ),
@@ -346,7 +346,7 @@ class _GalleryCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         orchid.variety!,
-                        style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                        style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),

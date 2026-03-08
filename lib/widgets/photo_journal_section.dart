@@ -58,11 +58,11 @@ class PhotoJournalSection extends StatelessWidget {
               final photos = snapshot.data ?? [];
 
               if (photos.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.all(16),
+                return Padding(
+                  padding: const EdgeInsets.all(16),
                   child: Text(
                     'No photos yet — capture your orchid\'s journey!',
-                    style: TextStyle(color: AppTheme.textSecondary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 );
               }
@@ -82,7 +82,7 @@ class PhotoJournalSection extends StatelessWidget {
                             child: Container(
                               width: 100,
                               decoration: BoxDecoration(
-                                color: AppTheme.surfaceVariant,
+                                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                                 borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                               ),
                               child: Column(
@@ -229,11 +229,11 @@ class _PhotoThumbnail extends StatelessWidget {
               width: 100,
               height: 120,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+              errorBuilder: (ctx, _, __) => Container(
                 width: 100,
                 height: 120,
-                color: AppTheme.surfaceVariant,
-                child: const Icon(Icons.broken_image, color: AppTheme.textSecondary),
+                color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                child: Icon(Icons.broken_image, color: Theme.of(ctx).colorScheme.onSurfaceVariant),
               ),
             ),
           ),

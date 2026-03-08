@@ -101,7 +101,7 @@ class _AddCareTaskDialogState extends State<AddCareTaskDialog> {
                 style: TextStyle(
                   color: _firstDueDate != null
                       ? AppTheme.primary
-                      : AppTheme.textSecondary,
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               trailing: _firstDueDate != null

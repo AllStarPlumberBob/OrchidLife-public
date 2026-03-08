@@ -254,7 +254,7 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
                   SwitchListTile(
                     secondary: Icon(
                       Icons.healing,
-                      color: _isRescue ? AppTheme.statusOverdue : AppTheme.textSecondary,
+                      color: _isRescue ? AppTheme.statusOverdue : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                     title: const Text('Rescue Orchid'),
                     subtitle: const Text('This orchid needs extra TLC'),
@@ -365,14 +365,14 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
   }
 
   Widget _buildPhotoPlaceholder() {
-    return const Column(
+    return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.add_a_photo, color: AppTheme.primary, size: 40),
-        SizedBox(height: 8),
+        const Icon(Icons.add_a_photo, color: AppTheme.primary, size: 40),
+        const SizedBox(height: 8),
         Text(
           'Tap to add',
-          style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12),
         ),
       ],
     );
@@ -526,11 +526,11 @@ class _AddEditOrchidScreenState extends State<AddEditOrchidScreen> {
           ],
         ),
         if (_pendingCareTasks.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
               'No care tasks — tap "Add Task" to set one up',
-              style: TextStyle(color: AppTheme.textSecondary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           )
         else

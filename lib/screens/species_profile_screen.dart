@@ -104,7 +104,7 @@ class SpeciesProfileScreen extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 14,
                         fontStyle: FontStyle.italic,
-                        color: AppTheme.textSecondary,
+                        color: AppTheme.statusSkipped,
                       ),
                     ),
                   ],
@@ -190,7 +190,7 @@ class SpeciesProfileScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             _lightDescription(),
-            style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+            style: const TextStyle(fontSize: 13, color: AppTheme.statusSkipped),
           ),
         ],
       ),
@@ -315,7 +315,7 @@ class SpeciesProfileScreen extends StatelessWidget {
       case 'advanced':
         return AppTheme.statusOverdue;
       default:
-        return AppTheme.textSecondary;
+        return AppTheme.statusSkipped;
     }
   }
 }

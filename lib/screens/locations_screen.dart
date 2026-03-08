@@ -27,18 +27,18 @@ class LocationsScreen extends StatelessWidget {
                 showBackButton: true,
               ),
               if (locations.isEmpty)
-                const SliverFillRemaining(
+                SliverFillRemaining(
                   child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.location_on_outlined, size: 64, color: AppTheme.textSecondary),
-                        SizedBox(height: 16),
-                        Text('No locations yet', style: TextStyle(color: AppTheme.textSecondary)),
-                        SizedBox(height: 8),
+                        Icon(Icons.location_on_outlined, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                        const SizedBox(height: 16),
+                        Text('No locations yet', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                        const SizedBox(height: 8),
                         Text('Add a growing location to track\nlight conditions by spot.',
                             textAlign: TextAlign.center,
-                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
                       ],
                     ),
                   ),
@@ -165,7 +165,7 @@ class _LocationCard extends StatelessWidget {
                     if (location.description != null)
                       Text(
                         location.description!,
-                        style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                        style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
                       ),
                   ],
                 ),
@@ -213,7 +213,7 @@ class _LocationCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   Text(
                     DateFormat.MMMd().format(location.lastReadingAt!),
-                    style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                    style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ],
               ],
