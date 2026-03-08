@@ -610,6 +610,14 @@ class AppDatabase extends _$AppDatabase {
     )).toList();
   }
 
+  /// Get orchid IDs for a soak session (lightweight — no joins to orchids table)
+  Future<List<int>> getOrchidIdsForSoakSession(int sessionId) async {
+    final rows = await (select(soakSessionTasks)
+          ..where((t) => t.soakSessionId.equals(sessionId)))
+        .get();
+    return rows.map((r) => r.orchidId).toList();
+  }
+
   /// Create a soak session with its associated tasks
   Future<int> createSoakSession({
     required List<int> taskIds,

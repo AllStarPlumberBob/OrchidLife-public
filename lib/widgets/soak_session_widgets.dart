@@ -150,8 +150,12 @@ class SoakSessionCard extends StatefulWidget {
 class _SoakSessionCardState extends State<SoakSessionCard>
     with WidgetsBindingObserver {
   static bool _alarmDialogShowing = false;
+  /// Callbacks queued by instances whose alarm was blocked by another dialog.
+  /// Drained one-at-a-time when a dialog is dismissed.
+  static final List<VoidCallback> _pendingAlarmRetries = [];
 
   Timer? _timer;
+  Timer? _alarmFallbackTimer;
   Duration _remaining = Duration.zero;
   List<SoakSessionTaskWithOrchid> _sessionTasks = [];
   bool _isReadyToDrain = false;
@@ -167,11 +171,19 @@ class _SoakSessionCardState extends State<SoakSessionCard>
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateRemaining());
 
     // If the session is already readyToDrain on build (cold restart case),
-    // trigger the alarm after the first frame
+    // trigger the alarm after the first frame.
     if (widget.session.status == SoakStatus.readyToDrain) {
       _isReadyToDrain = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && !_alarmAcknowledged && !_alarmDialogShowing) {
+          _triggerAlarm();
+        }
+      });
+      // Fallback: if the post-frame callback didn't fire the alarm (e.g. the
+      // widget was briefly unmounted during a cold-start rebuild), retry after
+      // a short delay.  Uses a Timer so it can be cancelled in dispose().
+      _alarmFallbackTimer = Timer(const Duration(seconds: 2), () {
+        if (mounted && !_alarmAcknowledged && !_alarmDialogShowing && !_alarmPlaying) {
           _triggerAlarm();
         }
       });
@@ -182,10 +194,8 @@ class _SoakSessionCardState extends State<SoakSessionCard>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
-    if (_alarmPlaying) {
-      FlutterRingtonePlayer().stop();
-      _alarmPlaying = false;
-    }
+    _alarmFallbackTimer?.cancel();
+    _stopAlarm();
     super.dispose();
   }
 
@@ -243,8 +253,14 @@ class _SoakSessionCardState extends State<SoakSessionCard>
   }
 
   void _triggerAlarm() {
-    _alarmPlaying = true;
-    FlutterRingtonePlayer().playAlarm(looping: true, volume: 1.0, asAlarm: true);
+    try {
+      FlutterRingtonePlayer().playAlarm(looping: true, volume: 1.0, asAlarm: true);
+      _alarmPlaying = true;
+    } catch (e) {
+      _alarmPlaying = false;
+      debugPrint('Failed to play soak alarm ringtone: $e');
+    }
+    // Show dialog regardless of whether ringtone succeeded
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _showAlarmDialog();
     });
@@ -252,14 +268,27 @@ class _SoakSessionCardState extends State<SoakSessionCard>
 
   void _stopAlarm() {
     if (_alarmPlaying) {
-      FlutterRingtonePlayer().stop();
+      try {
+        FlutterRingtonePlayer().stop();
+      } catch (e) {
+        debugPrint('Failed to stop soak alarm ringtone: $e');
+      }
       _alarmPlaying = false;
     }
   }
 
   void _showAlarmDialog() {
-    // Prevent stacked dialogs from multiple sessions completing simultaneously
-    if (_alarmDialogShowing) return;
+    // Prevent stacked dialogs from multiple sessions completing simultaneously.
+    // If blocked, queue a retry so this session's alarm fires after the
+    // current dialog is dismissed.
+    if (_alarmDialogShowing) {
+      _pendingAlarmRetries.add(() {
+        if (mounted && !_alarmAcknowledged && !_alarmDialogShowing && !_alarmPlaying) {
+          _triggerAlarm();
+        }
+      });
+      return;
+    }
     _alarmDialogShowing = true;
 
     final orchidNames = _sessionTasks.map((st) => st.orchid.name).join(', ');
@@ -296,7 +325,14 @@ class _SoakSessionCardState extends State<SoakSessionCard>
           ),
         ],
       ),
-    ).then((_) => _alarmDialogShowing = false);
+    ).then((_) {
+      _alarmDialogShowing = false;
+      // Fire next queued alarm (if any) now that this dialog is closed.
+      if (_pendingAlarmRetries.isNotEmpty) {
+        final next = _pendingAlarmRetries.removeAt(0);
+        next();
+      }
+    });
   }
 
   Future<void> _completeSoak() async {

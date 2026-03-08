@@ -49,9 +49,13 @@ class _MainNavigationState extends State<MainNavigation>
       _currentIndex = 0;
     }
 
-    // Request permissions and schedule notifications after first frame
+    // Request permissions and schedule notifications after first frame.
+    // Also check for expired soak sessions (cold-start case — the app was
+    // killed by Android while a timer was running).  didChangeAppLifecycleState
+    // does NOT fire on cold start, so we must check here.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _requestPermissionsAndSchedule();
+      _checkForReadyToDrainSessions();
     });
   }
 
@@ -69,13 +73,21 @@ class _MainNavigationState extends State<MainNavigation>
     }
   }
 
-  /// On app resume, check if any soak sessions are readyToDrain and switch to agenda
+  /// Mark any expired soak sessions in the DB, then switch to the agenda
+  /// tab if any are ready to drain.  Runs on both cold-start (post-frame
+  /// callback in initState) and warm resume (didChangeAppLifecycleState).
   Future<void> _checkForReadyToDrainSessions() async {
-    final db = Provider.of<AppDatabase>(context, listen: false);
-    final sessions = await db.getActiveSoakSessions();
-    final hasReady = sessions.any((s) => s.status == SoakStatus.readyToDrain);
-    if (hasReady && mounted) {
-      setState(() => _currentIndex = 0);
+    try {
+      final db = Provider.of<AppDatabase>(context, listen: false);
+      // Ensure sessions that expired while backgrounded/killed are marked.
+      await db.markExpiredSessionsReadyToDrain();
+      final sessions = await db.getActiveSoakSessions();
+      final hasReady = sessions.any((s) => s.status == SoakStatus.readyToDrain);
+      if (hasReady && mounted) {
+        setState(() => _currentIndex = 0);
+      }
+    } catch (e) {
+      debugPrint('Soak session check error: $e');
     }
   }
 

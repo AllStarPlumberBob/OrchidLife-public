@@ -202,7 +202,10 @@ class NotificationService {
       presentSound: true,
     );
 
-    // Use negative sessionId to avoid collision with positive task IDs
+    // Use negative sessionId to avoid collision with positive task IDs.
+    // alarmClock mode uses AlarmManager.setAlarmClock() — the most reliable
+    // scheduling on Android. Immune to Doze, battery optimization, and
+    // Samsung's "Sleeping apps" feature that can suppress exactAllowWhileIdle.
     try {
       await _plugin.zonedSchedule(
         -sessionId,
@@ -210,7 +213,7 @@ class NotificationService {
         body,
         scheduledDate,
         NotificationDetails(android: androidDetails, iOS: darwinDetails),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: AndroidScheduleMode.alarmClock,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         payload: 'drain:$sessionId',
@@ -233,6 +236,35 @@ class NotificationService {
     final tasks = await _db.getAllEnabledTasks();
     for (final task in tasks) {
       await scheduleTaskNotification(task);
+    }
+    // Re-schedule drain notifications for any soak sessions still in progress.
+    // cancelAll() above wiped them along with the task notifications.
+    await _rescheduleActiveDrainNotifications();
+  }
+
+  /// Re-schedule system notifications for soak sessions that are still
+  /// counting down (status == soaking).  Sessions already readyToDrain
+  /// don't need a future notification — only the in-app alarm matters.
+  Future<void> _rescheduleActiveDrainNotifications() async {
+    try {
+      final sessions = await _db.getActiveSoakSessions();
+      for (final session in sessions) {
+        if (session.status != SoakStatus.soaking) continue;
+        final drainAt = session.startedAt.add(
+          Duration(minutes: session.durationMinutes),
+        );
+        // Only schedule if the drain time is still in the future
+        if (drainAt.isAfter(DateTime.now())) {
+          final orchidIds = await _db.getOrchidIdsForSoakSession(session.id);
+          await scheduleDrainNotification(
+            sessionId: session.id,
+            orchidIds: orchidIds,
+            drainAt: drainAt,
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to reschedule drain notifications: $e');
     }
   }
 
