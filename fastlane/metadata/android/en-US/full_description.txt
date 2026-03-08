@@ -1,0 +1,15 @@
+OrchidLife helps you keep your orchids thriving with smart care scheduling, light measurement, and AI-powered identification — all without accounts or tracking.
+
+Features:
+
+* Care scheduling — Set reminders for watering, fertilizing, repotting, misting, inspecting, and pruning with customizable intervals per orchid.
+* Today view — See all care tasks due today at a glance, grouped by orchid.
+* Lux meter — Use your phone's light sensor to measure ambient light and find the perfect spot for each orchid.
+* AI photo handoff — Launch Google Lens, ChatGPT, or other apps with contextual prompts to identify orchid species or diagnose problems.
+* Care history — Track completed and skipped tasks to understand your care patterns over time.
+* Data export and import — Full backup and restore of your entire collection.
+* Dark mode — Follows your system theme automatically.
+
+Privacy:
+
+OrchidLife is fully offline. All data is stored locally on your device. There are no accounts, no analytics, no tracking, and no network requests. Your orchid collection stays yours.

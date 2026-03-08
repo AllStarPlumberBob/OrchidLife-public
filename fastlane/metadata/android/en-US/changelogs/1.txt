@@ -1,0 +1,9 @@
+Initial release of OrchidLife.
+
+* Care scheduling for watering, fertilizing, repotting, misting, inspecting, and pruning
+* Today view with tasks grouped by orchid
+* Lux meter for ambient light measurement
+* AI photo handoff to external apps
+* Care history tracking
+* Data export and import
+* Dark mode support
