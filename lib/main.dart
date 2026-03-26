@@ -78,7 +78,7 @@ class OrchidLifeApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
-      home: const MainNavigation(),
+      home: MainNavigation(),
       debugShowCheckedModeBanner: false,
     );
   }

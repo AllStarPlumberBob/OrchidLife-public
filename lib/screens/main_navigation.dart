@@ -12,16 +12,21 @@ import 'tools_screen.dart';
 import 'settings_screen.dart';
 
 class MainNavigation extends StatefulWidget {
-  const MainNavigation({super.key});
+  static final globalKey = GlobalKey<MainNavigationState>();
+  MainNavigation() : super(key: globalKey);
 
   @override
-  State<MainNavigation> createState() => _MainNavigationState();
+  State<MainNavigation> createState() => MainNavigationState();
 }
 
-class _MainNavigationState extends State<MainNavigation>
+class MainNavigationState extends State<MainNavigation>
     with WidgetsBindingObserver {
   int _currentIndex = 0;
   StreamSubscription<String>? _notificationTapSub;
+
+  void switchToTab(int index) {
+    setState(() => _currentIndex = index);
+  }
 
   final List<Widget> _screens = const [
     AgendaScreen(),

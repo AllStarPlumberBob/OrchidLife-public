@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:file_picker/file_picker.dart';
 import '../database/database.dart';
 import '../services/notification_service.dart';
 import '../services/export_service.dart';
+import '../services/import_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/orchid_sliver_app_bar.dart';
 import '../widgets/section_header.dart';
@@ -21,6 +23,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
   bool _isTogglingNotifications = false; // Prevent race condition
   bool _isExporting = false;
+  bool _isImporting = false;
   String _appVersion = '';
   TimeOfDay _defaultNotifyTime = const TimeOfDay(hour: 9, minute: 0);
   int _defaultWaterInterval = 7;
@@ -206,6 +209,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 enabled: !_isExporting,
                 onTap: () => _exportData(context, db),
+              ),
+              ListTile(
+                title: const Text('Import Data'),
+                subtitle: Text(_isImporting
+                    ? 'Importing...'
+                    : 'Restore from an OrchidLife backup ZIP'),
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                  ),
+                  child: _isImporting
+                      ? const Padding(
+                          padding: EdgeInsets.all(10),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.upload, color: AppTheme.primary),
+                ),
+                enabled: !_isImporting,
+                onTap: () => _importData(context, db),
               ),
 
               // About section
@@ -415,6 +440,80 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SnackBar(content: Text('Demo data cleared')),
         );
       }
+    }
+  }
+
+  Future<void> _importData(BuildContext context, AppDatabase db) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final notif = Provider.of<NotificationService>(context, listen: false);
+
+    // Confirmation dialog
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Import Data'),
+        content: const Text(
+          'This will replace ALL your current orchids, care history, and photos '
+          'with the data from the backup file. This cannot be undone.\n\n'
+          'Make sure to export your current data first if you want to keep it.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.statusOverdue),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Import & Replace'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    // Pick ZIP file
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['zip'],
+    );
+    if (result == null || result.files.single.path == null) return;
+
+    setState(() => _isImporting = true);
+    try {
+      final importService = ImportService(db);
+      final importResult = await importService.importFromZip(result.files.single.path!);
+
+      if (importResult.success) {
+        // Reschedule notifications for imported tasks
+        await notif.rescheduleAllTasks();
+
+        if (mounted) {
+          messenger.showSnackBar(SnackBar(
+            content: Text(
+              'Imported ${importResult.orchidsImported} orchids, '
+              '${importResult.tasksImported} tasks, '
+              '${importResult.photosImported} photos',
+            ),
+          ));
+        }
+      } else {
+        if (mounted) {
+          messenger.showSnackBar(SnackBar(
+            content: Text('Import failed: ${importResult.error}'),
+            backgroundColor: Colors.red.shade700,
+          ));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(
+          content: Text('Import failed: $e'),
+          backgroundColor: Colors.red.shade700,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _isImporting = false);
     }
   }
 }

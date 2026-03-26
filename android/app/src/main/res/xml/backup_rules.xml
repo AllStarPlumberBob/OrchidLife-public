@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Drift SQLite database (including WAL journal files) -->
+    <include domain="file" path="app_flutter/orchidlife.sqlite" />
+    <include domain="file" path="app_flutter/orchidlife.sqlite-wal" />
+    <include domain="file" path="app_flutter/orchidlife.sqlite-shm" />
+    <!-- Orchid photos -->
+    <include domain="file" path="app_flutter/orchid_photos" />
+    <!-- SharedPreferences (settings, first-run flag) -->
+    <include domain="sharedpref" path="." />
+</full-backup-content>

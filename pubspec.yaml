@@ -48,8 +48,9 @@ dependencies:
   share_plus: ^7.0.0
   android_intent_plus: ^5.0.2
 
-  # Data export
+  # Data export / import
   archive: ^3.6.1
+  file_picker: ^8.0.0
 
   # App version info
   package_info_plus: ^8.0.0

@@ -275,6 +275,12 @@ class AppDatabase extends _$AppDatabase {
   Future<List<CareTask>> getAllEnabledTasks() =>
       (select(careTasks)..where((t) => t.enabled.equals(true))).get();
 
+  Future<List<CareTask>> getAllEnabledWaterTasks() =>
+      (select(careTasks)
+            ..where((t) => t.enabled.equals(true))
+            ..where((t) => t.careType.equals(CareType.water.name)))
+          .get();
+
   Future<CareTask?> getCareTaskById(int id) =>
       (select(careTasks)..where((t) => t.id.equals(id))).getSingleOrNull();
 
@@ -801,6 +807,27 @@ class AppDatabase extends _$AppDatabase {
       await deleteOrchidAndRelated(orchid.id);
     }
   }
+
+  /// Delete all user data (orchids, tasks, logs, photos, sessions, milestones).
+  /// Does NOT delete species profiles, growing locations, or settings.
+  Future<void> clearAllUserData() async {
+    await transaction(() async {
+      await delete(soakSessionTasks).go();
+      await delete(soakSessions).go();
+      await delete(milestones).go();
+      await delete(careLogs).go();
+      await delete(careTasks).go();
+      await delete(lightReadings).go();
+      await delete(bloomLogs).go();
+      await delete(photoJournal).go();
+      await delete(orchids).go();
+    });
+  }
+
+  /// Insert a bloom log without updating the orchid's current bloom stage.
+  /// Used during import where the orchid already has the correct stage.
+  Future<int> insertBloomLogRaw(BloomLogsCompanion log) =>
+      into(bloomLogs).insert(log);
 
   // ============================================================
   // SPECIES PROFILES SEED DATA

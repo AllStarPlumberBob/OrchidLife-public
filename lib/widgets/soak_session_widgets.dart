@@ -658,6 +658,92 @@ Future<void> startSoakWorkflow(
   onCompleted?.call();
 }
 
+/// Start a standalone soak workflow from the Tools screen.
+/// Shows all orchids with water tasks (not just due today).
+/// Returns true if a soak session was actually created.
+Future<bool> startStandaloneSoakWorkflow(
+  BuildContext context,
+  AppDatabase db,
+) async {
+  // Get ALL enabled water tasks (not just due today)
+  final allWaterTasks = await db.getAllEnabledWaterTasks();
+
+  // Exclude tasks already in active soak sessions
+  final activeIds = await db.getActiveSessionTaskIds();
+  final availableTasks =
+      allWaterTasks.where((t) => !activeIds.contains(t.id)).toList();
+
+  if (availableTasks.isEmpty) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No orchids available to soak')),
+      );
+    }
+    return false;
+  }
+
+  // Build orchid info for each task
+  final taskOrchids = <int, Orchid>{};
+  for (final task in availableTasks) {
+    if (!taskOrchids.containsKey(task.orchidId)) {
+      final orchid = await db.getOrchidById(task.orchidId);
+      if (orchid != null) taskOrchids[task.orchidId] = orchid;
+    }
+  }
+
+  // Group by soak duration, all pre-selected
+  final grouped = <int, List<SoakCandidate>>{};
+  for (final task in availableTasks) {
+    final orchid = taskOrchids[task.orchidId];
+    if (orchid == null) continue;
+    final duration = orchid.soakDurationMinutes;
+    grouped.putIfAbsent(duration, () => []).add(SoakCandidate(
+      task: task,
+      orchid: orchid,
+      selected: true,
+    ));
+  }
+
+  if (!context.mounted) return false;
+
+  // Show bottom sheet
+  final result = await showModalBottomSheet<Map<int, List<SoakCandidate>>>(
+    context: context,
+    isScrollControlled: true,
+    builder: (context) => SoakSelectionSheet(grouped: grouped),
+  );
+
+  if (result == null || !context.mounted) return false;
+
+  final notif = Provider.of<NotificationService>(context, listen: false);
+
+  // Create one session per duration group (only for groups with selected orchids)
+  for (final entry in result.entries) {
+    final duration = entry.key;
+    final selected = entry.value.where((c) => c.selected).toList();
+    if (selected.isEmpty) continue;
+
+    final taskIds = selected.map((c) => c.task.id).toList();
+    final orchidIds = selected.map((c) => c.orchid.id).toList();
+
+    final sessionId = await db.createSoakSession(
+      taskIds: taskIds,
+      orchidIds: orchidIds,
+      durationMinutes: duration,
+      notificationId: 0,
+    );
+
+    final drainAt = DateTime.now().add(Duration(minutes: duration));
+    await notif.scheduleDrainNotification(
+      sessionId: sessionId,
+      orchidIds: orchidIds,
+      drainAt: drainAt,
+    );
+  }
+
+  return true;
+}
+
 /// Complete a care task with optional notes
 Future<void> completeTaskWorkflow(
   BuildContext context,
