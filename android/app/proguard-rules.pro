@@ -11,3 +11,7 @@
 
 # Keep annotations
 -keepattributes *Annotation*
+
+# Google Play Core (not available in F-Droid builds)
+-dontwarn com.google.android.play.core.**
+
