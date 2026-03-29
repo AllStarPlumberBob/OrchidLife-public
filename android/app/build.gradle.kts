@@ -15,6 +15,12 @@ if (keyPropertiesFile.exists()) {
     keyProperties.load(FileInputStream(keyPropertiesFile))
 }
 
+// Exclude Google Play Core (proprietary, incompatible with F-Droid)
+configurations.all {
+    exclude(group = "com.google.android.play", module = "core")
+    exclude(group = "com.google.android.play", module = "core-ktx")
+}
+
 android {
     namespace = "com.orchidlife.orchidlife"
     compileSdk = flutter.compileSdkVersion
@@ -47,6 +53,11 @@ android {
                 storePassword = keyProperties["storePassword"] as String
             }
         }
+    }
+
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
     }
 
     buildTypes {
