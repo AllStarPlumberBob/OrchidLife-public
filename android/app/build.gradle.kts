@@ -8,6 +8,13 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Exclude Google Play Core libraries — not available on F-Droid; classes must not be bundled in the APK.
+configurations.all {
+    exclude(group = "com.google.android.play", module = "core")
+    exclude(group = "com.google.android.play", module = "core-ktx")
+    exclude(group = "com.google.android.play", module = "feature-delivery")
+}
+
 // Load key.properties if it exists (release signing)
 val keyPropertiesFile = rootProject.file("key.properties")
 val keyProperties = Properties()
@@ -63,6 +70,11 @@ android {
                 "proguard-rules.pro"
             )
         }
+    }
+
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
     }
 }
 
