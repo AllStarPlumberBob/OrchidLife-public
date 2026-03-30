@@ -1,7 +1,3 @@
-# Flutter
--keep class io.flutter.** { *; }
--keep class io.flutter.plugins.** { *; }
-
 # Drift / SQLite
 -keep class org.sqlite.** { *; }
 -keep class sqlite3.** { *; }
@@ -12,7 +8,12 @@
 # Keep annotations
 -keepattributes *Annotation*
 
-# Google Play Core — excluded from the build via configurations.all in build.gradle.kts.
-# This -dontwarn is required so R8 does not error on any stale references left by
-# transitive Flutter plugin code that mentions these classes.
+# Google Play Core — the F-Droid fdroiddata build recipe patches the Flutter Gradle
+# plugin's flutter_release.pro to exclude PlayStoreDeferredComponentManager (the class
+# that implements Play Core interfaces) from the broad io.flutter.** keep rule.
+# This lets R8 strip the entire deferred-components chain from the APK.
+# The -dontwarn below silences any residual missing-class warnings during the R8 pass.
 -dontwarn com.google.android.play.core.**
+
+# Suppress warnings if R8 encounters stripped deferred-component class references.
+-dontwarn io.flutter.embedding.engine.deferredcomponents.**
