@@ -1,6 +1,3 @@
-# Flutter
--keep class io.flutter.** { *; }
--keep class io.flutter.plugins.** { *; }
 
 # Drift / SQLite
 -keep class org.sqlite.** { *; }
