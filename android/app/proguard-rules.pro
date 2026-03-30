@@ -12,6 +12,7 @@
 # Keep annotations
 -keepattributes *Annotation*
 
-# Google Play Core (not available in F-Droid builds)
+# Google Play Core — excluded from the build via configurations.all in build.gradle.kts.
+# This -dontwarn is required so R8 does not error on any stale references left by
+# transitive Flutter plugin code that mentions these classes.
 -dontwarn com.google.android.play.core.**
-
